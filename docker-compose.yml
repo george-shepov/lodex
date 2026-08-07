@@ -1,0 +1,15 @@
+services:
+  api:
+    build: ./backend
+    env_file: .env.local
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "127.0.0.1:8015:8015"
+
+  web:
+    build: ./frontend
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:4175:80"
