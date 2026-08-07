@@ -58,7 +58,19 @@ async function book() {
       <form v-else-if="step === 'schedule'" @submit.prevent="book" class="schedule"><p class="eyebrow">Next: a real-world check</p><h2>Request your meet-and-greet.</h2><p>We will confirm the scope in person and then confirm the final price. Your requested time is held only after LODEX replies.</p><div class="fields"><input v-model="appointment.name" required placeholder="Your name"/><input v-model="appointment.phone" required placeholder="Phone"/><input v-model="appointment.email" type="email" placeholder="Email (optional)"/><input v-model="appointment.address" required placeholder="Job address"/><input v-model="appointment.preferred_date" required type="date"/><select v-model="appointment.preferred_time" required><option disabled value="">Preferred arrival window</option><option>Morning (9 AM–12 PM)</option><option>Afternoon (12 PM–3 PM)</option><option>Late afternoon (3 PM–6 PM)</option></select></div><button class="cta" :disabled="sending">{{ sending ? 'Sending…' : 'Request meet-and-greet' }}</button><p v-if="notice" class="notice">{{ notice }}</p></form>
       <div v-else class="schedule done"><p class="eyebrow">Request received</p><h2>We’ll confirm the visit shortly.</h2><p>{{ notice }}</p></div>
     </section>
-    <section class="services"><p class="eyebrow">Small jobs welcome</p><h2>Assembly, repairs, mounting, fixtures, paint touch-ups, caulking, doors, drywall, smart-home setup, property maintenance—and the jobs bigger contractors often decline.</h2></section>
+    <section class="services"><p class="eyebrow">Small jobs welcome</p><h2>Clear work categories. A real person confirms the scope.</h2><div class="service-grid"><article><b>Mounting & assembly</b><span>TVs, shelving, furniture, hardware, smart-home devices.</span></article><article><b>Repair & adjustment</b><span>Doors, cabinets, fixtures, caulking, drywall and touch-ups.</span></article><article><b>Home upkeep</b><span>Property-maintenance lists, seasonal fixes and the small jobs larger contractors decline.</span></article><article><b>Project support</b><span>Photo/video intake first; then a meet-and-greet before a final price.</span></article></div><p class="area"><b>Serving Cleveland’s east side and surrounding communities.</b> Tell us the job address early so we can confirm that the visit fits the service area.</p></section>
+    <section class="proof"><p class="eyebrow">How we earn the proof</p><h2>No made-up reviews. Every completed project becomes a documented before/after story—with customer permission.</h2><p>That gives new customers real work to judge, and it gives LODEX an honest portfolio and review base as projects are completed.</p></section>
     <footer>LODEX Construction Maintenance and Repair <span>•</span> Northeast Ohio <span>•</span> Final price is confirmed after scope validation.</footer>
   </main>
 </template>
+
+<style scoped>
+.service-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin:28px 0; }
+.service-grid article { padding:20px; border:1px solid #d8d3ca; background:#fff; border-radius:5px; }
+.service-grid b { display:block; margin-bottom:7px; font-size:16px; }
+.service-grid span,.area { color:#5e5952; line-height:1.55; }
+.proof { background:#efe6db; padding:76px max(24px,calc((100vw - 900px)/2)); text-align:center; }
+.proof h2 { font-size:clamp(26px,4vw,47px); letter-spacing:-.05em; line-height:1.1; margin:12px auto; }
+.proof p:last-child { max-width:680px; margin:0 auto; color:#5e5952; line-height:1.65; }
+@media(max-width:640px){ .service-grid { grid-template-columns:1fr; } }
+</style>
