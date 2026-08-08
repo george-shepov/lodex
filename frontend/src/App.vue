@@ -15,6 +15,19 @@ const projectCode = ref('')
 const projectPhone = ref('')
 const project = ref(null)
 const projectError = ref('')
+const virtualOpen = ref(false)
+const virtualRoom = ref('')
+const virtualStatus = ref('')
+const virtualError = ref('')
+const dualCamera = ref(false)
+const cameraFacing = ref('environment')
+const remoteConnected = ref(false)
+const localVideoRef = ref(null)
+const workVideoRef = ref(null)
+const remoteVideoRef = ref(null)
+let virtualSocket = null
+let virtualPeer = null
+let virtualStreams = []
 const appointment = ref({ name: '', phone: '', email: '', address: '', preferred_date: '', preferred_time: '' })
 const notice = ref('')
 const messages = ref([
@@ -151,6 +164,128 @@ async function lookupProject() {
     projectError.value = error.message
   }
 }
+
+async function openVirtualMeet() {
+  virtualRoom.value = projectCode.value.trim().toUpperCase() || project.value?.project_code || `LDX-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+  virtualOpen.value = true
+  virtualStatus.value = 'Preparing your camera and microphone…'
+  virtualError.value = ''
+  await nextTick()
+  await prepareVirtualMedia()
+  if (!virtualError.value) connectVirtualRoom()
+}
+
+async function prepareVirtualMedia() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    virtualError.value = 'This browser does not provide camera access. You can still call LODEX or use the regular meet-and-greet request.'
+    return
+  }
+  stopVirtualMedia()
+  try {
+    const workStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: true })
+    virtualStreams = [workStream]
+    cameraFacing.value = 'environment'
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    const cameras = devices.filter(device => device.kind === 'videoinput')
+    if (cameras.length > 1) {
+      const workDevice = workStream.getVideoTracks()[0]?.getSettings()?.deviceId
+      const subjectCamera = cameras.find(device => device.deviceId !== workDevice) || cameras[1]
+      try {
+        const subjectStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: subjectCamera.deviceId } }, audio: false })
+        virtualStreams.push(subjectStream)
+        dualCamera.value = true
+      } catch {
+        dualCamera.value = false
+      }
+    }
+    if (workVideoRef.value) workVideoRef.value.srcObject = workStream
+    if (localVideoRef.value) localVideoRef.value.srcObject = virtualStreams[1] || workStream
+    virtualStatus.value = dualCamera.value ? 'Both cameras are ready. Waiting for LODEX to join…' : 'Camera ready. Waiting for LODEX to join…'
+  } catch (error) {
+    virtualError.value = error.name === 'NotAllowedError' ? 'Camera or microphone permission was declined. Allow access in your browser settings, then try again.' : 'We could not start the camera on this device. You can still request a regular visit.'
+  }
+}
+
+function connectVirtualRoom() {
+  if (!virtualRoom.value || virtualError.value) return
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  virtualSocket = new WebSocket(`${protocol}//${window.location.host}/api/virtual/rooms/${encodeURIComponent(virtualRoom.value)}`)
+  virtualPeer = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
+  virtualStreams.flatMap(stream => stream.getTracks()).forEach(track => virtualPeer.addTrack(track, virtualStreams.find(stream => stream.getTracks().includes(track))))
+  virtualPeer.ontrack = event => {
+    remoteConnected.value = true
+    if (remoteVideoRef.value && event.streams[0]) remoteVideoRef.value.srcObject = event.streams[0]
+  }
+  virtualPeer.onicecandidate = event => {
+    if (event.candidate && virtualSocket?.readyState === WebSocket.OPEN) virtualSocket.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate }))
+  }
+  virtualSocket.onmessage = async event => {
+    const data = JSON.parse(event.data)
+    if (data.type === 'room-full') { virtualError.value = 'This virtual room already has two people. Call LODEX if you need another invite.'; return }
+    if (data.type === 'joined') { virtualStatus.value = data.participants > 1 ? 'Connecting your virtual visit…' : 'Room ready. Waiting for LODEX to join…'; return }
+    if (data.type === 'peer-joined') {
+      const offer = await virtualPeer.createOffer()
+      await virtualPeer.setLocalDescription(offer)
+      virtualSocket.send(JSON.stringify({ type: 'offer', offer }))
+    }
+    if (data.type === 'offer') {
+      await virtualPeer.setRemoteDescription(data.offer)
+      const answer = await virtualPeer.createAnswer()
+      await virtualPeer.setLocalDescription(answer)
+      virtualSocket.send(JSON.stringify({ type: 'answer', answer }))
+    }
+    if (data.type === 'answer') await virtualPeer.setRemoteDescription(data.answer)
+    if (data.type === 'ice-candidate' && data.candidate) await virtualPeer.addIceCandidate(data.candidate)
+  }
+  virtualSocket.onerror = () => { virtualError.value = 'The virtual room could not connect. Your project details are still saved.' }
+}
+
+async function switchVirtualCamera() {
+  if (dualCamera.value || !navigator.mediaDevices?.getUserMedia) return
+  const nextFacing = cameraFacing.value === 'environment' ? 'user' : 'environment'
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: nextFacing } }, audio: false })
+    const oldStream = virtualStreams[0]
+    const newTrack = stream.getVideoTracks()[0]
+    const sender = virtualPeer?.getSenders().find(item => item.track?.kind === 'video')
+    if (sender) await sender.replaceTrack(newTrack)
+    oldStream?.getVideoTracks().forEach(track => track.stop())
+    virtualStreams[0] = new MediaStream([newTrack, ...(oldStream?.getAudioTracks() || [])])
+    if (workVideoRef.value) workVideoRef.value.srcObject = virtualStreams[0]
+    if (localVideoRef.value) localVideoRef.value.srcObject = virtualStreams[0]
+    cameraFacing.value = nextFacing
+  } catch {
+    virtualStatus.value = 'This phone did not allow the other camera. Keep the current camera or use the regular visit request.'
+  }
+}
+
+async function copyVirtualInvite() {
+  const invite = `${window.location.origin}${window.location.pathname}#project?code=${encodeURIComponent(virtualRoom.value)}`
+  try {
+    await navigator.clipboard.writeText(invite)
+    virtualStatus.value = 'Room invite copied. Send it to the LODEX person joining you.'
+  } catch {
+    virtualStatus.value = `Room code: ${virtualRoom.value}`
+  }
+}
+
+function stopVirtualMedia() {
+  virtualStreams.flatMap(stream => stream.getTracks()).forEach(track => track.stop())
+  virtualStreams = []
+  if (virtualPeer) virtualPeer.close()
+  if (virtualSocket) virtualSocket.close()
+  virtualPeer = null
+  virtualSocket = null
+  remoteConnected.value = false
+  dualCamera.value = false
+}
+
+function closeVirtualMeet() {
+  stopVirtualMedia()
+  virtualOpen.value = false
+  virtualStatus.value = ''
+  virtualError.value = ''
+}
 </script>
 
 <template>
@@ -196,7 +331,7 @@ async function lookupProject() {
       </div>
     </section>
 
-    <section id="project" class="project-section page-width"><div class="section-kicker"><span>04</span><span>Returning customers</span></div><div class="project-grid"><div><p class="eyebrow">Your project, in one place</p><h2>Need the details<br/><em>again?</em></h2><p class="project-lede">Use the project code from your confirmation and the phone number on the request to see the latest scope, visit status, and next step.</p><a class="phone-link" :href="`tel:${phone}`">Need help finding it? Call {{ phone }}</a></div><form class="lookup-card" @submit.prevent="lookupProject"><label>Project code<input v-model="projectCode" placeholder="LDX-123456" autocomplete="off"/></label><label>Phone used for the request<input v-model="projectPhone" type="tel" placeholder="216-555-0123" autocomplete="tel"/></label><button type="submit" class="primary-button">Open my project <span>↗</span></button><p v-if="projectError" class="error">{{ projectError }}</p><div v-if="project" class="project-result"><div class="project-result-top"><span>{{ project.status }}</span><b>{{ project.progress }}%</b></div><h3>{{ project.title }}</h3><p>{{ project.next_step }}</p><div class="meter-track"><i :style="{ width: `${project.progress}%` }"></i></div><small>Scope confirmation: {{ project.scope_confirmed ? '100% confirmed' : 'still being reviewed' }}</small></div></form></div></section>
+    <section id="project" class="project-section page-width"><div class="section-kicker"><span>04</span><span>Returning customers</span></div><div class="project-grid"><div><p class="eyebrow">Your project, in one place</p><h2>Need the details<br/><em>again?</em></h2><p class="project-lede">Use the project code from your confirmation and the phone number on the request to see the latest scope, visit status, and next step.</p><a class="phone-link" :href="`tel:${phone}`">Need help finding it? Call {{ phone }}</a></div><form class="lookup-card" @submit.prevent="lookupProject"><label>Project code<input v-model="projectCode" placeholder="LDX-123456" autocomplete="off"/></label><label>Phone used for the request<input v-model="projectPhone" type="tel" placeholder="216-555-0123" autocomplete="tel"/></label><button type="submit" class="primary-button">Open my project <span>↗</span></button><p v-if="projectError" class="error">{{ projectError }}</p><div v-if="project" class="project-result"><div class="project-result-top"><span>{{ project.status }}</span><b>{{ project.progress }}%</b></div><h3>{{ project.title }}</h3><p>{{ project.next_step }}</p><div class="meter-track"><i :style="{ width: `${project.progress}%` }"></i></div><small>Scope confirmation: {{ project.scope_confirmed ? '100% confirmed' : 'still being reviewed' }}</small><button type="button" class="virtual-button" @click="openVirtualMeet">▣ Start virtual meet-and-greet</button></div></form></div></section>
 
     <footer class="site-footer"><div class="footer-brand"><strong>LODEX</strong><span>Construction · Maintenance · Repair</span></div><div class="footer-links"><a href="#about">About</a><a href="#gallery">Gallery</a><a href="#intake">Start a project</a><a href="#project">My project</a></div><div class="footer-contact"><a :href="`tel:${phone}`">{{ phone }}</a><span>Northeast Ohio</span></div><div class="footer-bottom"><span>Clear scope. Thoughtful work. No surprises.</span><span>© 2026 LODEX</span></div></footer>
 
@@ -204,5 +339,6 @@ async function lookupProject() {
     <div v-if="supportOpen" class="support-popover"><p class="eyebrow">LODEX support</p><h3>What do you need?</h3><button type="button" @click="chooseIntent('Fix'); supportOpen = false">Start a project</button><a :href="`tel:${phone}`" @click="supportOpen = false">Call {{ phone }}</a><button type="button" @click="openSchedule(); supportOpen = false">Request a meet-and-greet</button><form @submit.prevent="send(); supportOpen = false"><input v-model="message" class="support-input" placeholder="Ask a quick question…"/><button type="submit">Send</button></form></div>
 
     <div v-if="galleryOpen" class="lightbox" @click.self="galleryOpen = null"><button type="button" class="lightbox-close" @click="galleryOpen = null">×</button><img :src="galleryOpen.image" :alt="galleryOpen.title" @error="imageFallback"/><div><span>{{ galleryOpen.category }}</span><h3>{{ galleryOpen.title }}</h3><a href="#intake" @click="galleryOpen = null">Start with an idea like this →</a></div></div>
+    <div v-if="virtualOpen" class="virtual-modal" role="dialog" aria-modal="true" aria-label="Virtual meet-and-greet"><div class="virtual-header"><div><p class="eyebrow">LODEX virtual visit</p><h3>Meet from where the work is.</h3></div><button type="button" class="lightbox-close virtual-close" @click="closeVirtualMeet">×</button></div><div class="call-stage"><div class="remote-stage"><video ref="remoteVideoRef" autoplay playsinline></video><div v-if="!remoteConnected" class="waiting-state"><span>Waiting for LODEX to join</span><small>Room {{ virtualRoom }}</small></div><span class="video-label">LODEX</span></div><div class="local-stage"><div class="local-tile"><video ref="workVideoRef" autoplay playsinline muted></video><span>Work area</span></div><div class="local-tile"><video ref="localVideoRef" autoplay playsinline muted></video><span>You</span></div></div></div><p v-if="virtualStatus" class="virtual-status">{{ virtualStatus }}</p><p v-if="virtualError" class="virtual-error">{{ virtualError }}</p><div class="virtual-actions"><button v-if="!dualCamera" type="button" class="outline-button" @click="switchVirtualCamera">Switch camera</button><button type="button" class="outline-button" @click="copyVirtualInvite">Copy room invite</button><a class="primary-button" :href="`tel:${phone}`">Call LODEX</a><button type="button" class="back-button" @click="closeVirtualMeet">End virtual visit</button></div><small class="virtual-note">Your browser controls camera access. Dual-camera mode is attempted when the phone exposes two simultaneous camera devices; some mobile browsers allow only one camera at a time.</small></div>
   </main>
 </template>
