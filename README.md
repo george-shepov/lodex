@@ -8,7 +8,13 @@ Customer-facing handyman intake: a visitor describes what needs to be built or f
 2. `docker compose up --build`
 3. Open `http://localhost:4175`.
 
-The API intentionally never represents an AI response as a final estimate. Image uploads are passed to the server-side vision model; video uploads yield a representative frame with `ffmpeg` when available. Uploaded media is stored locally under `data/uploads`; production deployment must use protected persistent storage and a configured lead notification channel.
+The API intentionally never represents an AI response as a final estimate. Image uploads are passed to the server-side vision model; video uploads yield a representative frame with `ffmpeg` when available.
+
+## Lead storage and owner alerts
+
+LODEX runs its own isolated Postgres database in the Compose deployment. Every appointment and support request is stored in `lodex_leads`, and existing local requests are imported on startup. The local JSONL files in `data/` remain as a fallback. Storage alone does **not** send an email or SMS.
+
+To alert the owner, configure SMTP (email), Twilio (SMS), or both using the variables in `.env.example`. Notifications are best-effort and never prevent a lead from being stored.
 
 ## Deploy
 

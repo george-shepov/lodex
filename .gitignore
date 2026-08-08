@@ -1,5 +1,6 @@
 .env
 .env.local
+.lodex-db.env
 __pycache__/
 *.py[cod]
 data/

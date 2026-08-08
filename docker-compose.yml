@@ -1,15 +1,53 @@
 services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: .lodex-db.env
+    environment:
+      POSTGRES_DB: lodex
+      POSTGRES_USER: lodex
+    volumes:
+      - lodex-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lodex -d lodex"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
   api:
+    restart: unless-stopped
     build: ./backend
-    env_file: .env.local
+    env_file:
+      - .env.local
+      - .lodex-db.env
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?OPENAI_API_KEY must be supplied from the VPS vault}
     volumes:
       - ./data:/app/data
     ports:
       - "127.0.0.1:8015:8015"
+    networks:
+      - default
+      - edge
+    depends_on:
+      db:
+        condition: service_healthy
 
   web:
+    restart: unless-stopped
     build: ./frontend
     depends_on:
       - api
     ports:
       - "127.0.0.1:4175:80"
+    networks:
+      - default
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: shepov_edge
+
+volumes:
+  lodex-postgres-data:
