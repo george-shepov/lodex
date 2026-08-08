@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
@@ -30,6 +30,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+virtual_rooms: dict[str, set[WebSocket]] = {}
 
 
 class IntakeChat(BaseModel):
@@ -88,6 +89,31 @@ def first_video_frame(video_path: Path) -> Path | None:
 @app.get("/api/health")
 async def health():
     return {"ok": True, "ai_configured": bool(os.getenv("OPENAI_API_KEY"))}
+
+
+@app.websocket("/api/virtual/rooms/{room_id}")
+async def virtual_room(websocket: WebSocket, room_id: str):
+    await websocket.accept()
+    peers = virtual_rooms.setdefault(room_id, set())
+    if len(peers) >= 2:
+        await websocket.send_json({"type": "room-full"})
+        await websocket.close(code=1008)
+        return
+    peers.add(websocket)
+    await websocket.send_json({"type": "joined", "participants": len(peers)})
+    for peer in list(peers):
+        if peer is not websocket:
+            await peer.send_json({"type": "peer-joined"})
+    try:
+        while True:
+            message = await websocket.receive_json()
+            for peer in list(peers):
+                if peer is not websocket:
+                    await peer.send_json(message)
+    except WebSocketDisconnect:
+        peers.discard(websocket)
+        if not peers:
+            virtual_rooms.pop(room_id, None)
 
 
 @app.post("/api/intake/upload")
