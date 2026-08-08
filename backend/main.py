@@ -152,12 +152,41 @@ When sufficient information is available, summarize the assumptions in bullets a
     return {"reply": response.output_text}
 
 
+@app.get("/api/projects/lookup")
+async def lookup_project(code: str, phone: str):
+    requested_code = code.strip().upper()
+    requested_phone = re.sub(r"\D", "", phone)
+    request_file = UPLOAD_DIR.parent / "appointment-requests.jsonl"
+    if not request_file.exists():
+        raise HTTPException(404, "No project request was found yet.")
+    for line in reversed(request_file.read_text(encoding="utf-8").splitlines()):
+        if not line:
+            continue
+        record = json.loads(line)
+        stored_phone = re.sub(r"\D", "", str(record.get("phone", "")))
+        if record.get("project_code", "").upper() == requested_code and stored_phone == requested_phone:
+            summary = (record.get("project_summary") or "").strip()
+            title = summary.splitlines()[0][:72] if summary else "Home project"
+            return {
+                "project_code": record["project_code"],
+                "status": "Meet-and-greet requested",
+                "title": title,
+                "next_step": "LODEX will confirm the requested visit window and review any remaining details with you.",
+                "progress": 100 if record.get("assumptions_confirmed") else 72,
+                "scope_confirmed": bool(record.get("assumptions_confirmed")),
+                "requested_date": record.get("preferred_date"),
+                "requested_time": record.get("preferred_time"),
+            }
+    raise HTTPException(404, "We could not match that project code and phone number.")
+
+
 @app.post("/api/appointments/request")
 async def request_appointment(request: AppointmentRequest):
-    if not request.assumptions_confirmed:
-        raise HTTPException(400, "Please confirm the project assumptions before requesting a meet-and-greet.")
+    project_id = uuid.uuid4().hex
+    project_code = f"LDX-{project_id[:6].upper()}"
     record = request.model_dump() | {
-        "id": uuid.uuid4().hex,
+        "id": project_id,
+        "project_code": project_code,
         "status": "requested",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "note": "Requested time is not a final booking until LODEX confirms it.",
@@ -166,5 +195,6 @@ async def request_appointment(request: AppointmentRequest):
         f.write(json.dumps(record) + "\n")
     return {
         "id": record["id"],
+        "project_code": record["project_code"],
         "message": "Meet-and-greet requested. We will confirm the time and final scope before any final price is set.",
     }
