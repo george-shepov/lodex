@@ -185,14 +185,22 @@ async def lookup_project(code: str, phone: str):
     request_file = UPLOAD_DIR.parent / "appointment-requests.jsonl"
     if not request_file.exists():
         raise HTTPException(404, "No project request was found yet.")
-    for line in reversed(request_file.read_text(encoding="utf-8").splitlines()):
-        if not line:
-            continue
-        record = json.loads(line)
+    records = [json.loads(line) for line in request_file.read_text(encoding="utf-8").splitlines() if line]
+    for record in reversed(records):
         stored_phone = re.sub(r"\D", "", str(record.get("phone", "")))
         if record.get("project_code", "").upper() == requested_code and stored_phone == requested_phone:
             summary = (record.get("project_summary") or "").strip()
             title = summary.splitlines()[0][:72] if summary else "Home project"
+            past_projects = []
+            for previous in reversed(records):
+                previous_phone = re.sub(r"\D", "", str(previous.get("phone", "")))
+                if previous_phone == requested_phone and previous.get("project_code", "").upper() != requested_code:
+                    previous_summary = (previous.get("project_summary") or "").strip()
+                    past_projects.append({
+                        "project_code": previous.get("project_code"),
+                        "title": previous_summary.splitlines()[0][:72] if previous_summary else "Home project",
+                        "status": previous.get("status", "requested"),
+                    })
             return {
                 "project_code": record["project_code"],
                 "status": "Meet-and-greet requested",
@@ -202,6 +210,7 @@ async def lookup_project(code: str, phone: str):
                 "scope_confirmed": bool(record.get("assumptions_confirmed")),
                 "requested_date": record.get("preferred_date"),
                 "requested_time": record.get("preferred_time"),
+                "past_projects": past_projects[:8],
             }
     raise HTTPException(404, "We could not match that project code and phone number.")
 
