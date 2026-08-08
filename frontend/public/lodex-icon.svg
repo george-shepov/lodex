@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LODEX">
+  <rect width="512" height="512" rx="112" fill="#151411"/>
+  <path d="M132 116h66v214h182v66H132z" fill="#f5f1e8"/>
+  <path d="M244 116h136v66H310v56h62v64h-62v28h70v66H244z" fill="#d29a52"/>
+</svg>
