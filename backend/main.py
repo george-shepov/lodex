@@ -165,6 +165,10 @@ async def upload_media(
 
 @app.post("/api/intake/chat")
 async def intake_chat(payload: IntakeChat):
+    if not os.getenv("OPENAI_API_KEY"):
+        return {
+            "reply": "LODEX helps with Northeast Ohio home repairs, maintenance, installations, upgrades, and custom work—turning a photo or plain-English idea into a clear next step. Tell me what you want built or fixed, where it is, and any timing or access details; I’ll help organize it without pretending a mystery wall is a budget spreadsheet."
+        }
     system = f"""You are the intake assistant for {BUSINESS_NAME}, a Northeast Ohio handyman and property-maintenance service.
 Your job is to clarify a small repair, installation, assembly, cleaning, or maintenance request before an in-person meet-and-greet.
 Never state or imply a final price. Do not invent what is visible in photos or videos. Clearly label uncertainty.

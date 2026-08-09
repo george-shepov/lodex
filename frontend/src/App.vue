@@ -34,15 +34,16 @@ const messages = ref([
   { role: 'assistant', text: 'What are you trying to build, fix, upgrade, or customize? Tell us in your own words—or show us the space.' },
 ])
 
+const inspirationImage = '/inspiration/what-is-possible.png'
 const galleryItems = [
-  { title: 'Warm kitchen, custom feel', category: 'Customize', image: 'https://lzcustom.com/assets/gallery/projects/kitchen-granite-hd.png' },
-  { title: 'Handcrafted cabinet details', category: 'Build', image: 'https://lzcustom.com/assets/gallery/projects/custom-cabinets-hd.png' },
-  { title: 'Stone that becomes the room', category: 'Upgrade', image: 'https://lzcustom.com/assets/gallery/projects/bathroom-marble-hd.png' },
-  { title: 'Precision tile patterns', category: 'Upgrade', image: 'https://lzcustom.com/assets/gallery/u6358423361_Intricate_geometric_tile_pattern_flooring_expert__bec8e5ac-8a9c-4831-8c48-d865023de519_0.png' },
-  { title: 'A workshop built for detail', category: 'Build', image: 'https://lzcustom.com/assets/gallery/u6358423361_Professional_stone_fabrication_workshop_with_gran_b43cb579-df0b-4d0e-afa0-00fc79398a29_0.png' },
-  { title: 'Materials worth looking at twice', category: 'Customize', image: 'https://lzcustom.com/assets/gallery/projects/granite-samples.jpg' },
-  { title: 'A cleaner, finished space', category: 'Fix', image: 'https://lzcustom.com/assets/gallery/u6358423361_Professional_commercial_interior_painting_premium_fe294b7e-0227-404b-bed4-28fc32e6bb35_0.png' },
-  { title: 'Built around the way you live', category: 'Build', image: 'https://lzcustom.com/assets/gallery/u6358423361_Luxury_kitchen_interior_with_handcrafted_oak_cabi_6ac455ef-ff90-49ca-baf3-971aab706a90_0.png' },
+  { title: 'Warm kitchen, custom feel', category: 'Customize', image: inspirationImage, crop: 0 },
+  { title: 'Handcrafted cabinet details', category: 'Build', image: inspirationImage, crop: 0 },
+  { title: 'A room made to gather in', category: 'Upgrade', image: inspirationImage, crop: 1 },
+  { title: 'A fireplace with presence', category: 'Upgrade', image: inspirationImage, crop: 2 },
+  { title: 'Built-in storage that works', category: 'Build', image: inspirationImage, crop: 3 },
+  { title: 'Materials worth looking at twice', category: 'Customize', image: inspirationImage, crop: 2 },
+  { title: 'A cleaner, finished space', category: 'Fix', image: inspirationImage, crop: 1 },
+  { title: 'Built around the way you live', category: 'Build', image: inspirationImage, crop: 3 },
 ]
 
 const intents = ['Build', 'Fix', 'Upgrade', 'Customize']
@@ -306,7 +307,7 @@ function closeVirtualMeet() {
         <div class="hero-actions"><button type="button" class="primary-button" @click="document.querySelector('#intake')?.scrollIntoView({ behavior: 'smooth' })">Start with your project <span>↗</span></button><a class="phone-link" :href="`tel:${phone}`">Or call {{ phone }}</a></div>
       </div>
       <div class="hero-collage" aria-label="LODEX project inspiration">
-        <button v-for="(item, index) in galleryItems.slice(0, 3)" :key="item.title" type="button" class="collage-card" :class="`collage-${index + 1}`" @click="galleryOpen = item"><img :src="item.image" :alt="item.title" @error="imageFallback"/><span>{{ item.category }} <b>↗</b></span></button>
+        <button v-for="(item, index) in galleryItems.slice(0, 3)" :key="item.title" type="button" class="collage-card" :class="`collage-${index + 1}`" @click="galleryOpen = item"><div class="image-crop" :style="{ '--crop-position': `${item.crop * 33.333333}%`, backgroundImage: `url(${item.image})` }"><img :src="item.image" :alt="item.title" @error="imageFallback"/></div><span>{{ item.category }} <b>↗</b></span></button>
         <div class="collage-note"><span>Ideas welcome.</span><b>Details matter.</b></div>
       </div>
     </section>
@@ -318,7 +319,7 @@ function closeVirtualMeet() {
     </section>
 
     <section id="gallery" class="gallery-section">
-      <div class="page-width"><div class="section-kicker light"><span>02</span><span>Possibilities</span></div><div class="gallery-heading"><div><p class="eyebrow">Concept inspiration from the LZ Custom archive</p><h2>See a direction.<br/><em>Then make it yours.</em></h2></div><p>These images are inspiration for what thoughtful fabrication, repair, and finishing can look like. Your space and your project are the source of truth.</p></div><div class="gallery-grid"><button v-for="item in galleryItems" :key="item.title" type="button" class="gallery-card" @click="galleryOpen = item"><div class="gallery-image"><img :src="item.image" :alt="item.title" loading="lazy" @error="imageFallback"/><span>View ↗</span></div><div class="gallery-meta"><span>{{ item.category }}</span><b>{{ item.title }}</b></div></button></div></div>
+      <div class="page-width"><div class="section-kicker light"><span>02</span><span>Possibilities</span></div><div class="gallery-heading"><div><p class="eyebrow">Concept inspiration from the LODEX archive</p><h2>See a direction.<br/><em>Then make it yours.</em></h2></div><p>These images are inspiration for what thoughtful fabrication, repair, and finishing can look like. Your space and your project are the source of truth.</p></div><div class="gallery-grid"><button v-for="item in galleryItems" :key="item.title" type="button" class="gallery-card" @click="galleryOpen = item"><div class="gallery-image"><div class="image-crop" :style="{ '--crop-position': `${item.crop * 33.333333}%`, backgroundImage: `url(${item.image})` }"><img :src="item.image" :alt="item.title" loading="lazy" @error="imageFallback"/></div><span>View ↗</span></div><div class="gallery-meta"><span>{{ item.category }}</span><b>{{ item.title }}</b></div></button></div></div>
     </section>
 
     <section id="intake" class="intake-section">
