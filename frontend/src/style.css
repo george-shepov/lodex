@@ -60,14 +60,8 @@ a { color: inherit; }
   gap: 30px;
   border-bottom: 1px solid rgba(23, 35, 38, .12);
 }
-.brand { display: flex; align-items: baseline; gap: 11px; text-decoration: none; }
-.brand strong, .footer-brand strong { font-size: 22px; letter-spacing: .16em; }
-.brand span, .footer-brand span {
-  color: var(--muted);
-  font: 10px 'DM Mono', monospace;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-}
+.brand { display: flex; align-items: center; text-decoration: none; }
+.brand-logo { display: block; width: clamp(230px, 25vw, 320px); height: auto; }
 .nav-links { display: flex; gap: 6px; margin-left: auto; }
 .nav-links a {
   padding: 9px 12px;
@@ -386,9 +380,7 @@ a { color: inherit; }
   .utility-bar span { display: none; }
   .utility-bar a { margin-left: auto; }
   .site-nav { min-height: 72px; gap: 10px; flex-wrap: wrap; padding-block: 12px; }
-  .brand { display: grid; gap: 3px; }
-  .brand strong { font-size: 19px; }
-  .brand span { font-size: 9px; }
+  .brand-logo { width: min(210px, 54vw); }
   .nav-links { display: none; }
   .nav-cta { margin-left: auto; padding: 11px 13px; font-size: 11px; }
   .hero { padding-block: 55px 68px; }
