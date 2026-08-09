@@ -11,8 +11,7 @@ export function enhanceFooter({ version }) {
     <div class="footer-shell">
       <section class="footer-intro" aria-labelledby="footer-brand-title">
         <a class="footer-brand-link" href="#top" aria-label="LODEX home">
-          <strong id="footer-brand-title">LODEX</strong>
-          <span>Construction · Maintenance · Repair</span>
+          <img id="footer-brand-title" class="footer-logo" src="/lodex-logo.svg" alt="LODEX Residential & Commercial Services" />
         </a>
         <p>Practical help for home projects across Northeast Ohio—from the first photo to the final walkthrough.</p>
         <p class="footer-note">Photos and videos help us understand the work. Final pricing follows scope confirmation so assumptions stay visible.</p>
