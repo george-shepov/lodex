@@ -6,6 +6,9 @@ services:
       - ./data:/app/data
     ports:
       - "127.0.0.1:8015:8015"
+    networks:
+      - default
+      - edge
 
   web:
     build: ./frontend
@@ -13,3 +16,11 @@ services:
       - api
     ports:
       - "127.0.0.1:4175:80"
+    networks:
+      - default
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: shepov_edge
