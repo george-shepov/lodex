@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, ref } from 'vue'
 
-const phone = '216-268-2990'
+const phone = '440-601-8001'
 const step = ref('chat')
 const message = ref('')
 const description = ref('')

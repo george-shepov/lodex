@@ -18,17 +18,18 @@ function setComposer(text = '') {
 }
 
 function correctPhone(root = document) {
-  root.querySelectorAll('a[href*="216-268-2990"], a[href*="2162682990"]').forEach(link => {
+  root.querySelectorAll('a[href^="tel:"]').forEach(link => {
     link.href = CORRECT_PHONE_HREF
     link.textContent = link.textContent
-      .replace('216-268-2990', CORRECT_PHONE_DISPLAY)
-      .replace('(216) 268-2990', CORRECT_PHONE_DISPLAY)
+      .replace(/\(?\d{3}\)?[-\s.]\d{3}[-\s.]\d{4}/, CORRECT_PHONE_DISPLAY)
   })
 
   const walker = document.createTreeWalker(root.body || root, NodeFilter.SHOW_TEXT)
   let node
   while ((node = walker.nextNode())) {
-    if (node.nodeValue?.includes('216-268-2990')) node.nodeValue = node.nodeValue.replaceAll('216-268-2990', CORRECT_PHONE_DISPLAY)
+    if (/\(?\d{3}\)?[-\s.]\d{3}[-\s.]\d{4}/.test(node.nodeValue || '')) {
+      node.nodeValue = node.nodeValue.replace(/\(?\d{3}\)?[-\s.]\d{3}[-\s.]\d{4}/g, CORRECT_PHONE_DISPLAY)
+    }
   }
 }
 

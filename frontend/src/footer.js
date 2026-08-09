@@ -3,8 +3,8 @@ export function enhanceFooter({ version }) {
   if (!footer) return
 
   const existingPhone = footer.querySelector('a[href^="tel:"]')
-  const phoneHref = existingPhone?.getAttribute('href') || 'tel:216-268-2990'
-  const phoneText = existingPhone?.textContent?.trim() || '216-268-2990'
+  const phoneHref = existingPhone?.getAttribute('href') || 'tel:+14406018001'
+  const phoneText = existingPhone?.textContent?.trim() || '440-601-8001'
 
   footer.classList.add('site-footer--enhanced')
   footer.innerHTML = `
