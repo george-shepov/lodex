@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="frontend/public/lodex-logo-white.svg" alt="LODEX Residential & Commercial Services" width="760" />
+  <img src="frontend/public/LODEX-Residential-and-Commercial-Services-logo.png" alt="LODEX Residential & Commercial Services" width="760" />
 </p>
 
 # LODEX Residential & Commercial Services
