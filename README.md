@@ -1,4 +1,8 @@
-# LODEX Construction Maintenance and Repair
+<p align="center">
+  <img src="frontend/public/lodex-logo.svg" alt="LODEX Residential & Commercial Services" width="760" />
+</p>
+
+# LODEX Residential & Commercial Services
 
 Customer-facing handyman intake: a visitor describes what needs to be built or fixed, uploads a photo/video, confirms the working assumptions in chat, and requests an in-person meet-and-greet before a final price is set.
 
