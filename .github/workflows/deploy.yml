@@ -5,7 +5,9 @@ on:
     branches: [main]
     paths:
       - 'frontend/**'
+      - 'backend/**'
       - 'docker-compose.yml'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 permissions:
@@ -37,7 +39,7 @@ jobs:
           printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/lodex_vps_key
           chmod 600 ~/.ssh/lodex_vps_key
 
-      - name: Deploy web service on VPS
+      - name: Verify repository parity and deploy on VPS
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
@@ -54,10 +56,27 @@ jobs:
 
           cd "$repo"
           git fetch origin main
-          git pull --ff-only origin main
-          docker compose -f "$compose" build web
-          docker compose -f "$compose" up -d --no-deps --force-recreate web
-          docker compose -f "$compose" ps web
+
+          # Refuse to deploy over source or configuration that exists only on
+          # the VPS. Ignored runtime state (.env.local, data/, build output)
+          # remains outside this check by design.
+          vps_changes="$(git status --porcelain --untracked-files=all)"
+          if [ -n "$vps_changes" ]; then
+            echo 'VPS checkout contains changes that are not in GitHub:' >&2
+            printf '%s\n' "$vps_changes" >&2
+            exit 1
+          fi
+
+          test "$(git branch --show-current)" = main || {
+            echo 'VPS checkout is not on main.' >&2
+            exit 1
+          }
+          git merge --ff-only origin/main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+
+          docker compose -f "$compose" build api web
+          docker compose -f "$compose" up -d --force-recreate api web
+          docker compose -f "$compose" ps api web
           REMOTE
 
       - name: Verify live deployment
