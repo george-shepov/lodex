@@ -53,6 +53,14 @@ class AppointmentRequest(BaseModel):
     assumptions_confirmed: bool
 
 
+class FeedbackRequest(BaseModel):
+    project_code: str = Field(min_length=3, max_length=40)
+    phone: str = Field(default="", max_length=40)
+    rating: int = Field(ge=1, le=5)
+    recommend: bool | None = None
+    comments: str = Field(default="", max_length=2000)
+
+
 def client() -> AsyncOpenAI:
     if not os.getenv("OPENAI_API_KEY"):
         raise HTTPException(503, "AI analysis is not configured yet. You can still submit an appointment request.")
@@ -68,7 +76,7 @@ async def analyze_image(path: Path, media_type: str, description: str, service_c
     """Return observable details and follow-up questions; never a price."""
     encoded = base64.b64encode(path.read_bytes()).decode("ascii")
     prompt = f"""This is a customer-uploaded image for {BUSINESS_NAME}. The selected service is: {service_category or '(not selected)'}. Customer description: {description or '(none)'}.
-Describe only visible, relevant job details. Separate what you can see from what must be confirmed. Ask no more than four questions needed to scope the requested visit. For cleaning or restoration, identify the surface and any visible uncertainty but do not prescribe a method without confirmation. Never state a price, never claim licensing or insurance, and never assume hidden damage or dimensions."""
+Describe only visible, relevant job details. Separate what you can see from what must be confirmed. Ask no more than two questions needed to scope the requested visit. For cleaning or restoration, identify the surface and any visible uncertainty but do not prescribe a method without confirmation. Never state a price, never claim licensing or insurance, and never assume hidden damage or dimensions."""
     result = await client().responses.create(
         model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
         input=[{"role": "user", "content": [
@@ -139,7 +147,7 @@ async def upload_media(
                 raise HTTPException(413, "That file is over the 40 MB intake limit.")
             output.write(chunk)
 
-    analysis = "Upload saved. Describe what you want us to notice so we can confirm the scope."
+    analysis = "Upload saved. What should we focus on?"
     analyzed_type = file.content_type
     analysis_target = target
     if file.content_type.startswith("video/"):
@@ -147,12 +155,12 @@ async def upload_media(
         if frame:
             analysis_target, analyzed_type = frame, "image/jpeg"
         else:
-            analysis = "Video received. Automated frame analysis is unavailable at the moment, so tell us what you want checked and we will confirm it at the meet-and-greet."
+            analysis = "Video received. What should we check?"
     if analyzed_type.startswith("image/") and os.getenv("OPENAI_API_KEY"):
         try:
             analysis = await analyze_image(analysis_target, analyzed_type, description, service_category)
         except Exception:
-            analysis = "Upload received. Tell us what you want built or fixed and we’ll continue the scope review together."
+            analysis = "Upload received. What result do you want?"
     record = {"upload_id": upload_id, "filename": sanitize_filename(file.filename), "media_type": file.content_type, "description": description, "service_category": service_category, "stored_path": str(target), "analysis": analysis}
     with (UPLOAD_DIR.parent / "uploads.jsonl").open("a", encoding="utf-8") as f:
         f.write(json.dumps(record) + "\n")
@@ -162,22 +170,23 @@ async def upload_media(
         "media_type": file.content_type,
         "description": description,
         "analysis": analysis,
-        "message": "Uploaded. Tell us the result you want, and we’ll confirm the job details together.",
+        "message": "Uploaded.",
     }
 
 
 @app.post("/api/intake/chat")
 async def intake_chat(payload: IntakeChat):
     if not os.getenv("OPENAI_API_KEY"):
-        return {
-            "reply": "LODEX can help with renovations, repairs and maintenance, white-glove delivery and installation, sourcing, and cleaning or restoration. Tell me the result you want, where the work is, and anything about access or timing; I’ll help organize the next step without pretending a photo alone is a final estimate."
-        }
+        return {"reply": "What outcome do you want, and where is the work?"}
     system = f"""You are the intake assistant for {BUSINESS_NAME}, a Northeast Ohio property-project service.
-Your job is to clarify a renovation, repair, maintenance, delivery/installation, sourcing, cleaning, or surface-restoration request before an in-person meet-and-greet.
-Never state or imply a final price. Do not invent what is visible in photos or videos. Clearly label uncertainty.
-Ask one or two concise follow-up questions at a time, prioritizing: scope, exact location/area, material or item, dimensions/quantity, access/safety constraints, desired result, timing, and anything the customer can confirm in person.
-For cleaning/restoration, ask about the surface, condition, target result, access to water/power where relevant, and whether there are coatings or finishes that must be preserved. Do not promise a pressure-washing or laser-cleaning method before review.
-    When sufficient information is available, summarize the assumptions in bullets and ask the customer to confirm them, then invite them to choose a meet-and-greet time. Keep answers under 180 words."""
+Clarify renovation, repair, maintenance, delivery/installation, sourcing, cleaning, or surface-restoration work before a meet-and-greet.
+Default to ONE or TWO short sentences and about 45 words maximum. Never repeat, paraphrase, or recap what the customer just said; the UI already shows the project scope and progress percentage.
+Ask exactly ONE next question unless two tightly connected facts are genuinely needed. Never ask more than TWO questions in one reply.
+At a useful milestone, give at most one short acknowledgment and immediately ask the next high-value question. Do not turn the conversation into a questionnaire.
+Never state or imply a final price. Do not invent details from photos or videos. Clearly label uncertainty when it matters.
+Prioritize only the next missing detail among scope, location/area, material/item, dimensions/quantity, access/safety, desired result, timing, or an in-person confirmation.
+For cleaning/restoration, ask only the next needed fact about surface, condition, target result, water/power access, or finishes that must be preserved. Do not promise a method before review.
+Only when enough information exists for scope confirmation may you use a very compact checklist, no more than 60 words total, then ask the customer to confirm it and proceed to the meet-and-greet."""
     prompt = f"Selected service: {payload.service_category or '(not selected)'}\nProject summary so far: {payload.project_summary or '(none)'}\nMedia notes: {payload.media_notes or '(none)'}\nCustomer says: {payload.message}"
     try:
         response = await client().responses.create(
@@ -186,14 +195,16 @@ For cleaning/restoration, ask about the surface, condition, target result, acces
         )
         return {"reply": response.output_text, "degraded": False}
     except Exception as error:
-        # Keep intake usable when the configured AI provider, model, or network
-        # is temporarily unavailable. Do not expose provider errors to customers
-        # or turn a recoverable chat step into a plain-text 500.
         print(f"LODEX chat AI unavailable: {type(error).__name__}: {error}")
-        return {
-            "reply": "I can help organize that. What outcome are you after, where is the work, and what should we know about the item or surface? A photo or short video is helpful if you have one.",
-            "degraded": True,
-        }
+        return {"reply": "What outcome do you want, and where is the work?", "degraded": True}
+
+
+@app.post("/api/feedback")
+async def submit_feedback(feedback: FeedbackRequest):
+    record = feedback.model_dump() | {"created_at": datetime.now(timezone.utc).isoformat()}
+    with (UPLOAD_DIR.parent / "feedback.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps(record) + "\n")
+    return {"ok": True, "message": "Thank you. Your feedback was saved."}
 
 
 @app.get("/api/projects/lookup")
