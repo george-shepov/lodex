@@ -173,13 +173,23 @@ async def intake_chat(payload: IntakeChat):
 Your job is to clarify a small repair, installation, assembly, cleaning, or maintenance request before an in-person meet-and-greet.
 Never state or imply a final price. Do not invent what is visible in photos or videos. Clearly label uncertainty.
 Ask one or two concise follow-up questions at a time, prioritizing: scope, exact location/area, material or item, dimensions/quantity, access/safety constraints, desired result, timing, and anything the customer can confirm in person.
-When sufficient information is available, summarize the assumptions in bullets and ask the customer to confirm them, then invite them to choose a meet-and-greet time. Keep answers under 180 words."""
+    When sufficient information is available, summarize the assumptions in bullets and ask the customer to confirm them, then invite them to choose a meet-and-greet time. Keep answers under 180 words."""
     prompt = f"Project summary so far: {payload.project_summary or '(none)'}\nMedia notes: {payload.media_notes or '(none)'}\nCustomer says: {payload.message}"
-    response = await client().responses.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-        input=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
-    )
-    return {"reply": response.output_text}
+    try:
+        response = await client().responses.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+            input=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+        )
+        return {"reply": response.output_text, "degraded": False}
+    except Exception as error:
+        # Keep intake usable when the configured AI provider, model, or network
+        # is temporarily unavailable. Do not expose provider errors to customers
+        # or turn a recoverable chat step into a plain-text 500.
+        print(f"LODEX chat AI unavailable: {type(error).__name__}: {error}")
+        return {
+            "reply": "I can help organize that. Is this a physical game or equipment issue, or a software/game-code issue? Tell me what is failing, what you expected to happen, and any error message or screen recording you can share.",
+            "degraded": True,
+        }
 
 
 @app.get("/api/projects/lookup")

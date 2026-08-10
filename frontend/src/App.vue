@@ -66,8 +66,8 @@ function chooseIntent(intent) {
 }
 
 function openSchedule() {
-  // Keep scheduling behind the intake so every visit request has at least
-  // some project context. Header/support shortcuts should focus the chat.
+  // Require at least a little project context before showing the booking
+  // form. Previously the header and support menu skipped the intake chat.
   if (!hasCustomerMessage.value && !uploaded.value) {
     step.value = 'chat'
     document.querySelector('#intake')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -88,6 +88,18 @@ function imageFallback(event) {
   event.target.removeAttribute('src')
 }
 
+async function readApiResponse(response, fallbackMessage) {
+  const raw = await response.text()
+  let data
+  try {
+    data = raw ? JSON.parse(raw) : {}
+  } catch {
+    throw new Error(`${fallbackMessage} The service returned an unexpected response (${response.status}).`)
+  }
+  if (!response.ok) throw new Error(data.detail || data.error || fallbackMessage)
+  return data
+}
+
 async function upload() {
   if (!selectedFile.value) return
   const form = new FormData()
@@ -96,8 +108,7 @@ async function upload() {
   sending.value = true
   try {
     const response = await fetch('/api/intake/upload', { method: 'POST', body: form })
-    const data = await response.json()
-    if (!response.ok) throw new Error(data.detail || 'Upload failed')
+    const data = await readApiResponse(response, 'Upload failed.')
     uploaded.value = data
     add('assistant', `I received ${data.filename}.\n\n${data.analysis}`)
   } catch (error) {
@@ -119,8 +130,7 @@ async function send() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text, project_summary: summary.value, media_notes: uploaded.value ? `${uploaded.value.filename}: ${description.value}` : '' }),
     })
-    const data = await response.json()
-    if (!response.ok) throw new Error(data.detail || 'Unable to analyze right now')
+    const data = await readApiResponse(response, 'Unable to continue the scope review.')
     add('assistant', data.reply)
   } catch (error) {
     add('assistant', `${error.message} We can still collect the details and arrange a meet-and-greet.`)
@@ -139,8 +149,7 @@ async function book() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...appointment.value, project_summary: summary.value || 'Customer requested an in-person meet-and-greet.', uploads, assumptions_confirmed: agreed.value }),
     })
-    const data = await response.json()
-    if (!response.ok) throw new Error(data.detail || 'Could not request appointment')
+    const data = await readApiResponse(response, 'Could not request appointment.')
     notice.value = data.message
     projectCode.value = data.project_code || ''
     step.value = 'done'
@@ -161,8 +170,7 @@ async function lookupProject() {
   try {
     const query = new URLSearchParams({ code: projectCode.value.trim(), phone: projectPhone.value.trim() })
     const response = await fetch(`/api/projects/lookup?${query}`)
-    const data = await response.json()
-    if (!response.ok) throw new Error(data.detail || 'Project not found')
+    const data = await readApiResponse(response, 'Project not found.')
     project.value = data
   } catch (error) {
     projectError.value = error.message
