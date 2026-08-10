@@ -4,8 +4,8 @@
 /* Dark footer companion for the metallic LODEX identity */
 .site-footer--enhanced {
   background:
-    radial-gradient(circle at 16% 0%, rgba(213, 169, 81, .10), transparent 30rem),
-    linear-gradient(115deg, #0d0f0f 0%, #151817 100%);
+    radial-gradient(circle at 20% 0%, rgba(213, 169, 81, .08), transparent 28rem),
+    linear-gradient(100deg, #0d0f0f 0%, #111414 55%, #171817 100%);
   color: #f3efe6;
   border-top: 1px solid rgba(213, 169, 81, .28);
 }
@@ -21,6 +21,8 @@
 .site-footer--enhanced .footer-logo {
   width: min(400px, 100%);
   border-radius: 0;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 76%, transparent 100%);
+  mask-image: radial-gradient(ellipse at center, #000 76%, transparent 100%);
 }
 
 .site-footer--enhanced .footer-intro > p,
