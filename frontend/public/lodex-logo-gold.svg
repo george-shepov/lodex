@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 360" role="img" aria-labelledby="title desc">
+  <title id="title">LODEX</title>
+  <desc id="desc">LODEX Residential and Commercial Services logo with a gold X.</desc>
+  <rect width="1400" height="360" rx="24" fill="#151411"/>
+  <g aria-hidden="true">
+    <path fill="#a9a49a" d="M20 145 180 15l80 65V45h50v75l30 25-30 35L180 75 50 180Z"/>
+    <path fill="#d29a52" d="m51 144 129-105 129 105-11 14L180 62 62 158Z"/>
+    <path fill="none" stroke="#a9a49a" stroke-linecap="square" stroke-width="34" d="M79 159v116c0 23 12 34 35 34h86M281 159v86"/>
+    <path fill="#f5f1e8" d="M91 286h113c20 0 37-8 50-23l25-29c13-16 37-19 54-8l-36 41 35 29 35-41c9 19 5 42-11 55l-29 24c-16 13-35 17-54 10l-44-16H91Z"/>
+    <g fill="#d29a52" stroke="#151411" stroke-linejoin="round" stroke-width="5">
+      <path d="M115 145h65c16 0 29 9 34 23l-26-7-12 16h-14v97h-28v-97h-19Z"/>
+      <path d="M220 152h15l3 18-6 12v92h-23v-92l7-12Z"/>
+    </g>
+  </g>
+  <g aria-hidden="true">
+    <text x="390" y="235" fill="#f5f1e8" font-family="Arial Black, Manrope, sans-serif" font-size="190" font-weight="900" letter-spacing="-10">L</text>
+    <path fill="#f5f1e8" d="M570.0 91.0L575.4 79.2L582.4 81.9L586.3 92.8L590.8 94.0L599.4 84.2L605.3 88.8L606.0 100.4L610.0 102.7L620.9 95.7L625.4 101.8L622.8 113.1L625.9 116.5L638.4 112.9L640.9 120.0L635.2 130.1L637.3 134.3L650.3 134.3L650.7 141.8L642.4 149.9L643.2 154.5L655.7 158.1L654.0 165.5L643.8 170.9L643.2 175.5L654.2 182.6L650.5 189.1L639.1 191.5L637.3 195.7L645.8 205.6L640.4 210.8L628.9 209.9L625.9 213.5L631.3 225.3L624.6 228.8L613.8 224.6L610.0 227.3L611.9 240.1L604.5 241.6L595.3 234.6L590.8 236.0L589.0 248.9L581.5 248.2L574.6 238.9L570.0 239.0L564.6 250.8L557.6 248.1L553.7 237.2L549.2 236.0L540.6 245.8L534.7 241.2L534.0 229.6L530.0 227.3L519.1 234.3L514.6 228.2L517.2 216.9L514.1 213.5L501.6 217.1L499.1 210.0L504.8 199.9L502.7 195.7L489.7 195.7L489.3 188.2L497.6 180.1L496.8 175.5L484.3 171.9L486.0 164.5L496.2 159.1L496.8 154.5L485.8 147.4L489.5 140.9L500.9 138.5L502.7 134.3L494.2 124.4L499.6 119.2L511.1 120.1L514.1 116.5L508.7 104.7L515.4 101.2L526.2 105.4L530.0 102.7L528.1 89.9L535.5 88.4L544.7 95.4L549.2 94.0L551.0 81.1L558.5 81.8L565.4 91.1Z"/>
+    <circle cx="570" cy="165" r="45" fill="#151411"/>
+    <text x="670" y="235" fill="#f5f1e8" font-family="Arial Black, Manrope, sans-serif" font-size="190" font-weight="900" letter-spacing="-11">D</text>
+    <text x="850" y="235" fill="#f5f1e8" font-family="Arial Black, Manrope, sans-serif" font-size="190" font-weight="900" letter-spacing="-11">E</text>
+    <text x="1020" y="235" fill="#d29a52" stroke="#f5f1e8" stroke-width="3" paint-order="stroke fill" font-family="Arial Black, Manrope, sans-serif" font-size="190" font-weight="900" letter-spacing="-11">X</text>
+  </g>
+  <text x="865" y="309" fill="#a9a49a" font-family="Arial, Manrope, sans-serif" font-size="25" font-weight="700" letter-spacing="5" text-anchor="middle">RESIDENTIAL &amp; COMMERCIAL SERVICES</text>
+</svg>

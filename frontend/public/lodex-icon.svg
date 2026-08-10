@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360" role="img" aria-labelledby="title desc">
   <title id="title">LODEX</title>
   <desc id="desc">LODEX house, wrench, hammer, and screwdriver mark.</desc>
-  <rect width="360" height="360" rx="72" fill="#fff"/>
+  <rect width="360" height="360" rx="72" fill="#151411"/>
   <g transform="translate(14 14) scale(.91)">
-  <path fill="#66727d" d="M20 145 180 15l80 65V45h50v75l30 25-30 35L180 75 50 180Z"/>
-  <path fill="#7cff00" d="m51 144 129-105 129 105-11 14L180 62 62 158Z"/>
-  <path fill="none" stroke="#66727d" stroke-linecap="square" stroke-width="34" d="M79 159v116c0 23 12 34 35 34h86M281 159v86"/>
-  <path fill="#17212b" d="M91 286h113c20 0 37-8 50-23l25-29c13-16 37-19 54-8l-36 41 35 29 35-41c9 19 5 42-11 55l-29 24c-16 13-35 17-54 10l-44-16H91Z"/>
-  <g fill="#7cff00" stroke="#17212b" stroke-linejoin="round" stroke-width="5">
+  <path fill="#a9a49a" d="M20 145 180 15l80 65V45h50v75l30 25-30 35L180 75 50 180Z"/>
+  <path fill="#d29a52" d="m51 144 129-105 129 105-11 14L180 62 62 158Z"/>
+  <path fill="none" stroke="#a9a49a" stroke-linecap="square" stroke-width="34" d="M79 159v116c0 23 12 34 35 34h86M281 159v86"/>
+  <path fill="#f5f1e8" d="M91 286h113c20 0 37-8 50-23l25-29c13-16 37-19 54-8l-36 41 35 29 35-41c9 19 5 42-11 55l-29 24c-16 13-35 17-54 10l-44-16H91Z"/>
+  <g fill="#d29a52" stroke="#151411" stroke-linejoin="round" stroke-width="5">
     <path d="M115 145h65c16 0 29 9 34 23l-26-7-12 16h-14v97h-28v-97h-19Z"/>
     <path d="M220 152h15l3 18-6 12v92h-23v-92l7-12Z"/>
   </g>
