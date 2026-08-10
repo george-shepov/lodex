@@ -60,7 +60,9 @@ jobs:
           # Refuse to deploy over source or configuration that exists only on
           # the VPS. Ignored runtime state (.env.local, data/, build output)
           # remains outside this check by design.
-          vps_changes="$(git status --porcelain --untracked-files=all)"
+          # This legacy VPS-only environment file contains runtime settings,
+          # not source, and is intentionally never committed.
+          vps_changes="$(git status --porcelain --untracked-files=all | grep -v '^?? \.lodex-db\.env$' || true)"
           if [ -n "$vps_changes" ]; then
             echo 'VPS checkout contains changes that are not in GitHub:' >&2
             printf '%s\n' "$vps_changes" >&2
