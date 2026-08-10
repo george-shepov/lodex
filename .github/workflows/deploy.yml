@@ -1,0 +1,78 @@
+name: Deploy LODEX to VPS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'docker-compose.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lodex-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and restart lodex-web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Configure SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$VPS_HOST" || { echo 'Missing VPS_HOST repository secret' >&2; exit 1; }
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          test -n "$VPS_SSH_PRIVATE_KEY" || { echo 'Missing VPS_SSH_PRIVATE_KEY repository secret' >&2; exit 1; }
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/lodex_vps_key
+          chmod 600 ~/.ssh/lodex_vps_key
+
+      - name: Deploy web service on VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$VPS_USER" || { echo 'Missing VPS_USER repository secret' >&2; exit 1; }
+          ssh -i ~/.ssh/lodex_vps_key \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$VPS_USER@$VPS_HOST" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          repo=/home/shepov/deployments/lodex
+          compose="$repo/docker-compose.yml"
+
+          cd "$repo"
+          git fetch origin main
+          git pull --ff-only origin main
+          docker compose -f "$compose" build web
+          docker compose -f "$compose" up -d --no-deps --force-recreate web
+          docker compose -f "$compose" ps web
+          REMOTE
+
+      - name: Verify live deployment
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            -D /tmp/lodex-home-headers \
+            -o /tmp/lodex-home \
+            https://lodex.giorgiy.org/
+          grep -qi '^HTTP/.* 200' /tmp/lodex-home-headers
+
+          curl --fail --silent --show-error --max-time 20 \
+            -D /tmp/lodex-logo-headers \
+            -o /tmp/lodex-logo \
+            https://lodex.giorgiy.org/lodex-logo.png
+          grep -Eqi '^content-type:[[:space:]]*image/png([;[:space:]]|$)' /tmp/lodex-logo-headers
+
+          echo 'LODEX deployment verified: homepage 200 and lodex-logo.png image/png.'
