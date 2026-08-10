@@ -525,3 +525,21 @@ a { color: inherit; }
     padding-top: 44px;
   }
 }
+
+
+/* Seamless near-black logo header */
+.utility-bar {
+  background: #050606;
+}
+
+.site-nav {
+  background:
+    radial-gradient(circle at 23% 0%, rgba(183, 132, 43, .045), transparent 25rem),
+    linear-gradient(100deg, #050606 0%, #070808 58%, #090a09 100%);
+  border-bottom-color: rgba(213, 169, 81, .18);
+}
+
+.site-nav .brand-logo {
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%);
+}
