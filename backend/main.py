@@ -37,6 +37,7 @@ class IntakeChat(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     project_summary: str = ""
     media_notes: str = ""
+    service_category: str = Field(default="", max_length=120)
 
 
 class AppointmentRequest(BaseModel):
@@ -47,6 +48,7 @@ class AppointmentRequest(BaseModel):
     preferred_date: str
     preferred_time: str
     project_summary: str = Field(min_length=5, max_length=6000)
+    service_category: str = Field(default="General inquiry", max_length=120)
     uploads: list[dict] = Field(default_factory=list)
     assumptions_confirmed: bool
 
@@ -62,11 +64,11 @@ def sanitize_filename(filename: str | None) -> str:
     return re.sub(r"[^a-zA-Z0-9._-]", "_", name)[:120]
 
 
-async def analyze_image(path: Path, media_type: str, description: str) -> str:
+async def analyze_image(path: Path, media_type: str, description: str, service_category: str = "") -> str:
     """Return observable details and follow-up questions; never a price."""
     encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-    prompt = f"""This is a customer-uploaded image for {BUSINESS_NAME}. Customer description: {description or '(none)'}.
-Describe only visible, relevant job details. Separate what you can see from what must be confirmed. Ask no more than four questions needed to scope a handyman visit. Never state a price, never claim licensing or insurance, and never assume hidden damage or dimensions."""
+    prompt = f"""This is a customer-uploaded image for {BUSINESS_NAME}. The selected service is: {service_category or '(not selected)'}. Customer description: {description or '(none)'}.
+Describe only visible, relevant job details. Separate what you can see from what must be confirmed. Ask no more than four questions needed to scope the requested visit. For cleaning or restoration, identify the surface and any visible uncertainty but do not prescribe a method without confirmation. Never state a price, never claim licensing or insurance, and never assume hidden damage or dimensions."""
     result = await client().responses.create(
         model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
         input=[{"role": "user", "content": [
@@ -120,6 +122,7 @@ async def virtual_room(websocket: WebSocket, room_id: str):
 async def upload_media(
     file: Annotated[UploadFile, File(...)],
     description: Annotated[str, Form()] = "",
+    service_category: Annotated[str, Form()] = "",
 ):
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(415, "Please upload a JPG, PNG, WebP, HEIC, MP4, MOV, or WebM file.")
@@ -147,10 +150,10 @@ async def upload_media(
             analysis = "Video received. Automated frame analysis is unavailable at the moment, so tell us what you want checked and we will confirm it at the meet-and-greet."
     if analyzed_type.startswith("image/") and os.getenv("OPENAI_API_KEY"):
         try:
-            analysis = await analyze_image(analysis_target, analyzed_type, description)
+            analysis = await analyze_image(analysis_target, analyzed_type, description, service_category)
         except Exception:
             analysis = "Upload received. Tell us what you want built or fixed and we’ll continue the scope review together."
-    record = {"upload_id": upload_id, "filename": sanitize_filename(file.filename), "media_type": file.content_type, "description": description, "stored_path": str(target), "analysis": analysis}
+    record = {"upload_id": upload_id, "filename": sanitize_filename(file.filename), "media_type": file.content_type, "description": description, "service_category": service_category, "stored_path": str(target), "analysis": analysis}
     with (UPLOAD_DIR.parent / "uploads.jsonl").open("a", encoding="utf-8") as f:
         f.write(json.dumps(record) + "\n")
     return {
@@ -159,7 +162,7 @@ async def upload_media(
         "media_type": file.content_type,
         "description": description,
         "analysis": analysis,
-        "message": "Uploaded. Tell us what you want built or fixed, and we’ll confirm the job details together.",
+        "message": "Uploaded. Tell us the result you want, and we’ll confirm the job details together.",
     }
 
 
@@ -167,14 +170,15 @@ async def upload_media(
 async def intake_chat(payload: IntakeChat):
     if not os.getenv("OPENAI_API_KEY"):
         return {
-            "reply": "LODEX helps with Northeast Ohio home repairs, maintenance, installations, upgrades, and custom work—turning a photo or plain-English idea into a clear next step. Tell me what you want built or fixed, where it is, and any timing or access details; I’ll help organize it without pretending a mystery wall is a budget spreadsheet."
+            "reply": "LODEX can help with renovations, repairs and maintenance, white-glove delivery and installation, sourcing, and cleaning or restoration. Tell me the result you want, where the work is, and anything about access or timing; I’ll help organize the next step without pretending a photo alone is a final estimate."
         }
-    system = f"""You are the intake assistant for {BUSINESS_NAME}, a Northeast Ohio handyman and property-maintenance service.
-Your job is to clarify a small repair, installation, assembly, cleaning, or maintenance request before an in-person meet-and-greet.
+    system = f"""You are the intake assistant for {BUSINESS_NAME}, a Northeast Ohio property-project service.
+Your job is to clarify a renovation, repair, maintenance, delivery/installation, sourcing, cleaning, or surface-restoration request before an in-person meet-and-greet.
 Never state or imply a final price. Do not invent what is visible in photos or videos. Clearly label uncertainty.
 Ask one or two concise follow-up questions at a time, prioritizing: scope, exact location/area, material or item, dimensions/quantity, access/safety constraints, desired result, timing, and anything the customer can confirm in person.
+For cleaning/restoration, ask about the surface, condition, target result, access to water/power where relevant, and whether there are coatings or finishes that must be preserved. Do not promise a pressure-washing or laser-cleaning method before review.
     When sufficient information is available, summarize the assumptions in bullets and ask the customer to confirm them, then invite them to choose a meet-and-greet time. Keep answers under 180 words."""
-    prompt = f"Project summary so far: {payload.project_summary or '(none)'}\nMedia notes: {payload.media_notes or '(none)'}\nCustomer says: {payload.message}"
+    prompt = f"Selected service: {payload.service_category or '(not selected)'}\nProject summary so far: {payload.project_summary or '(none)'}\nMedia notes: {payload.media_notes or '(none)'}\nCustomer says: {payload.message}"
     try:
         response = await client().responses.create(
             model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
@@ -187,7 +191,7 @@ Ask one or two concise follow-up questions at a time, prioritizing: scope, exact
         # or turn a recoverable chat step into a plain-text 500.
         print(f"LODEX chat AI unavailable: {type(error).__name__}: {error}")
         return {
-            "reply": "I can help organize that. Is this a physical game or equipment issue, or a software/game-code issue? Tell me what is failing, what you expected to happen, and any error message or screen recording you can share.",
+            "reply": "I can help organize that. What outcome are you after, where is the work, and what should we know about the item or surface? A photo or short video is helpful if you have one.",
             "degraded": True,
         }
 
@@ -219,6 +223,7 @@ async def lookup_project(code: str, phone: str):
                 "project_code": record["project_code"],
                 "status": "Meet-and-greet requested",
                 "title": title,
+                "service_category": record.get("service_category", "General inquiry"),
                 "next_step": "LODEX will confirm the requested visit window and review any remaining details with you.",
                 "progress": 100 if record.get("assumptions_confirmed") else 72,
                 "scope_confirmed": bool(record.get("assumptions_confirmed")),
