@@ -109,7 +109,10 @@ function add(role, text) {
   nextTick(() => document.querySelector('.messages')?.scrollTo({ top: 99999, behavior: 'smooth' }))
 }
 function scrollToIntake() { document.querySelector('#intake')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
-function goHome() { navigate('/') }
+function goHome(hash = '') {
+  navigate('/')
+  if (hash) nextTick(() => document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+}
 function navigate(path) {
   window.history.pushState({}, '', path)
   currentPath.value = window.location.pathname
@@ -200,6 +203,7 @@ async function startDeposit() {
   sending.value = true
   paymentError.value = ''
   try {
+    try { sessionStorage.setItem('lodex-payment-context', JSON.stringify({ project_code: projectCode.value, phone: checkoutPhone })) } catch {}
     const response = await fetch('/api/payments/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -225,6 +229,36 @@ async function lookupProject() {
     project.value = await readApiResponse(response, 'Project not found.')
     paymentStatus.value = project.value.payment_status || 'not_started'
   } catch (error) { projectError.value = error.message }
+}
+async function handlePaymentReturn() {
+  const params = new URLSearchParams(window.location.search)
+  const payment = params.get('payment')
+  if (!payment) return
+  let context = {}
+  try { context = JSON.parse(sessionStorage.getItem('lodex-payment-context') || '{}') } catch {}
+  projectCode.value = params.get('project_code') || context.project_code || ''
+  projectPhone.value = context.phone || ''
+  window.history.replaceState({}, '', `${window.location.pathname}${window.location.hash}`)
+  if (payment === 'cancelled') {
+    paymentError.value = 'Payment was cancelled. No deposit was charged.'
+    goHome('#project')
+    return
+  }
+  if (payment !== 'success') return
+  paymentStatus.value = 'payment_pending'
+  notice.value = 'Payment received. We’re confirming the deposit now…'
+  if (projectCode.value && projectPhone.value) {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await lookupProject()
+      if (paymentStatus.value === 'paid') {
+        notice.value = 'Deposit payment recorded.'
+        try { sessionStorage.removeItem('lodex-payment-context') } catch {}
+        break
+      }
+      if (attempt < 4) await new Promise(resolve => setTimeout(resolve, 1500))
+    }
+  }
+  goHome('#project')
 }
 async function openVirtualMeet() {
   virtualRoom.value = projectCode.value.trim().toUpperCase() || project.value?.project_code || `LDX-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
@@ -301,7 +335,7 @@ function stopVirtualMedia() {
 }
 function closeVirtualMeet() { stopVirtualMedia(); virtualOpen.value = false; virtualStatus.value = ''; virtualError.value = '' }
 function onPopState() { currentPath.value = window.location.pathname }
-onMounted(() => window.addEventListener('popstate', onPopState))
+onMounted(() => { window.addEventListener('popstate', onPopState); handlePaymentReturn() })
 onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stopVirtualMedia() })
 </script>
 
@@ -310,7 +344,7 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stop
     <div class="utility-bar"><span>Northeast Ohio · Residential & commercial</span><a :href="phoneHref">Call LODEX · {{ phone }}</a></div>
     <nav class="site-nav" aria-label="Primary navigation">
       <a class="brand" href="/" @click.prevent="goHome" aria-label="LODEX home"><img class="brand-logo" src="/lodex-logo-blended.svg" alt="LODEX Residential & Commercial Services" /></a>
-      <div class="nav-links"><a href="/#services" @click.prevent="goHome">Services</a><a href="/#how-it-works" @click.prevent="goHome">How it works</a><a href="/#project" @click.prevent="goHome">My project</a></div>
+      <div class="nav-links"><a href="/#services" @click.prevent="goHome('#services')">Services</a><a href="/#how-it-works" @click.prevent="goHome('#how-it-works')">How it works</a><a href="/#project" @click.prevent="goHome('#project')">My project</a></div>
       <button type="button" class="nav-cta" @click="goHome(); nextTick(openSchedule)">Start a project <span>↗</span></button>
     </nav>
 
@@ -329,11 +363,11 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stop
 
     <template v-else>
       <section id="top" class="hero page-width">
-        <div class="hero-copy"><p class="eyebrow">One call. The whole project handled.</p><h1>Whatcha tryna <em>do?</em></h1><p class="lede">From sourcing and delivery to installation, repairs, cleaning, and complete renovations. Pick a lane—or just tell us what you need.</p><div class="hero-actions"><button type="button" class="primary-button" @click="scrollToIntake">Start with your project <span>↗</span></button><a class="phone-link" :href="phoneHref">Or call {{ phone }}</a></div></div>
+        <div class="hero-copy"><p class="eyebrow">LODEX Home Services</p><h1>Whatcha tryna <em>do?</em></h1><p class="lede">Renovate. Repair & maintain. Deliver & install. Find & source. Clean & restore. Choose the kind of help you need, or tell us the whole project in your own words.</p><div class="hero-service-lanes" aria-label="Choose a LODEX service"><button v-for="service in services" :key="service.slug" type="button" @click="chooseService(service); scrollToIntake()">{{ service.nav }}</button></div><div class="hero-actions"><button type="button" class="primary-button" @click="scrollToIntake">Start with your project <span>↗</span></button><a class="phone-link" :href="phoneHref">Or call {{ phone }}</a></div></div>
         <div class="hero-visual" aria-label="LODEX project examples"><div class="hero-image hero-image-main"></div><div class="hero-image hero-image-small"></div><div class="hero-proof"><b>Details matter.</b><span>Show us the work area. We’ll help determine the next step.</span></div></div>
       </section>
 
-      <section id="services" class="services-section page-width"><div class="section-heading"><div><p class="eyebrow">LODEX services</p><h2>One team for the work that keeps moving.</h2></div><p>Every service starts with the same thing: a clear look at what you want done, what is known, and what needs to be confirmed.</p></div><div class="service-grid"><a v-for="(service, index) in services" :key="service.slug" class="service-card" :href="serviceHref(service)" @click.prevent="openService(service)"><span>0{{ index + 1 }}</span><h3>{{ service.title }}</h3><p>{{ service.summary }}</p><b>Explore service →</b></a></div></section>
+      <section id="services" class="services-section page-width"><div class="section-heading"><div><p class="eyebrow">LODEX services</p><h2>Renovate, repair, deliver, source, and restore.</h2></div><p>Five clear ways to start. Every service begins with a practical look at scope, access, timing, materials, and the next step.</p></div><div class="service-grid"><a v-for="(service, index) in services" :key="service.slug" class="service-card" :href="serviceHref(service)" @click.prevent="openService(service)"><span>0{{ index + 1 }}</span><h3>{{ service.title }}</h3><p>{{ service.summary }}</p><b>Explore service →</b></a></div></section>
 
       <section id="how-it-works" class="how-section"><div class="page-width"><p class="eyebrow">Simple by design</p><div class="how-grid"><h2>Clear scope before the work begins.</h2><div class="how-steps"><div><b>01</b><h3>Tell us the outcome</h3><p>Choose a service, describe the job, or send photos and short video.</p></div><div><b>02</b><h3>Confirm the real details</h3><p>We ask only what is needed to understand scope, access, timing, and materials.</p></div><div><b>03</b><h3>Set the next step</h3><p>Request a meet-and-greet or coordinated visit—then get a clear, confirmed plan.</p></div></div></div></div></section>
 
@@ -349,7 +383,7 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stop
       <section id="project" class="project-section page-width"><div class="section-heading"><div><p class="eyebrow">Returning customers</p><h2>Your project, in one place.</h2></div><p>Use your project code and the phone number on the request to see the latest scope and next step.</p></div><form class="lookup-card" @submit.prevent="lookupProject"><label>Project code<input v-model="projectCode" placeholder="LDX-123456" autocomplete="off"/></label><label>Phone used for the request<input v-model="projectPhone" type="tel" placeholder="216-555-0123" autocomplete="tel"/></label><button type="submit" class="primary-button">Open my project <span>↗</span></button><p v-if="projectError" class="error">{{ projectError }}</p><div v-if="project" class="project-result"><div class="project-result-top"><span>{{ project.status }}</span><b>{{ project.progress }}%</b></div><h3>{{ project.title }}</h3><p v-if="project.service_category" class="project-service">{{ project.service_category }}</p><p>{{ project.next_step }}</p><div class="meter-track"><i :style="{ width: `${project.progress}%` }"></i></div><small>Scope confirmation: {{ project.scope_confirmed ? '100% confirmed' : 'still being reviewed' }}</small><div v-if="paymentStatus === 'paid'" class="payment-confirmed">Deposit payment recorded.</div><button v-else type="button" class="primary-button" @click="startDeposit" :disabled="sending">{{ sending ? 'Opening secure checkout…' : 'Pay a requested deposit' }} <span>↗</span></button><p v-if="paymentError" class="error">{{ paymentError }}</p><button type="button" class="virtual-button" @click="openVirtualMeet">▣ Start virtual meet-and-greet</button></div></form></section>
     </template>
 
-    <footer class="site-footer"><div class="footer-shell"><section class="footer-intro"><a class="footer-brand-link" href="/" @click.prevent="goHome"><img class="footer-logo" src="/lodex-logo-blended.svg" alt="LODEX Residential & Commercial Services"/></a><p>One practical partner for property projects across Northeast Ohio—from sourcing to the finished walkthrough.</p></section><nav class="footer-group"><span>Services</span><a v-for="service in services" :key="service.slug" :href="serviceHref(service)" @click.prevent="openService(service)">{{ service.short }}</a></nav><nav class="footer-group"><span>Your project</span><a href="/#intake" @click.prevent="goHome">Start a project</a><a href="/#project" @click.prevent="goHome">Open my project</a><a :href="phoneHref">Call {{ phone }}</a></nav><div class="footer-bottom"><span>© {{ new Date().getFullYear() }} LODEX · v{{ packageMetadata.version }}</span><span>Clear scope. Thoughtful work. No surprises.</span></div></div></footer>
+    <footer class="site-footer"><div class="footer-shell"><section class="footer-intro"><a class="footer-brand-link" href="/" @click.prevent="goHome"><img class="footer-logo" src="/lodex-logo-blended.svg" alt="LODEX Residential & Commercial Services"/></a><p>One practical partner for property projects across Northeast Ohio—from sourcing to the finished walkthrough.</p></section><nav class="footer-group"><span>Services</span><a v-for="service in services" :key="service.slug" :href="serviceHref(service)" @click.prevent="openService(service)">{{ service.short }}</a></nav><nav class="footer-group"><span>Your project</span><a href="/#intake" @click.prevent="goHome('#intake')">Start a project</a><a href="/#project" @click.prevent="goHome('#project')">Open my project</a><a :href="phoneHref">Call {{ phone }}</a></nav><div class="footer-bottom"><span>© {{ new Date().getFullYear() }} LODEX · v{{ packageMetadata.version }}</span><span>Clear scope. Thoughtful work. No surprises.</span></div></div></footer>
 
     <button type="button" class="support-fab" :class="{ open: supportOpen }" @click="openSupport" :aria-expanded="supportOpen"><span>{{ supportOpen ? '×' : '✦' }}</span>{{ supportOpen ? 'Close' : 'Need help?' }}</button>
     <div v-if="supportOpen" class="support-popover"><p class="eyebrow">LODEX support</p><h3>What do you need?</h3><button v-for="service in services" :key="service.slug" type="button" @click="chooseService(service); supportOpen = false">{{ service.short }}</button><a :href="phoneHref" @click="supportOpen = false">Call {{ phone }}</a><form @submit.prevent="send(); supportOpen = false"><input v-model="message" class="support-input" placeholder="Ask a quick question…"/><button type="submit">Send</button></form></div>

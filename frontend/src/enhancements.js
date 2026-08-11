@@ -93,7 +93,7 @@ function installSurvey() {
           }),
         })
         if (!response.ok) throw new Error('Feedback could not be saved.')
-        status.textContent = 'Thank you — feedback saved.'
+        status.textContent = `Saved: ${rating}/5 stars. Thank you.`
         form.classList.add('submitted')
       } catch (error) {
         status.textContent = error.message
