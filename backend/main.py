@@ -10,7 +10,7 @@ import uuid
 import base64
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import httpx
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
@@ -46,11 +46,17 @@ app.add_middleware(
 virtual_rooms: dict[str, set[WebSocket]] = {}
 
 
+class ConversationTurn(BaseModel):
+    role: Literal["assistant", "user"]
+    text: str = Field(min_length=1, max_length=4000)
+
+
 class IntakeChat(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     project_summary: str = ""
     media_notes: str = ""
     service_category: str = Field(default="", max_length=120)
+    conversation: list[ConversationTurn] = Field(default_factory=list, max_length=24)
 
 
 class AppointmentRequest(BaseModel):
@@ -64,6 +70,7 @@ class AppointmentRequest(BaseModel):
     service_category: str = Field(default="General inquiry", max_length=120)
     uploads: list[dict] = Field(default_factory=list)
     assumptions_confirmed: bool
+    intake_ready: bool = False
 
 
 class FeedbackRequest(BaseModel):
@@ -137,6 +144,112 @@ def latest_payment(project_code: str) -> dict[str, Any] | None:
 
 def stripe_is_configured() -> bool:
     return bool(STRIPE_SECRET_KEY and STRIPE_DEPOSIT_AMOUNT_CENTS > 0)
+
+
+STREET_ADDRESS_PATTERN = re.compile(
+    r"\b\d{1,6}\s+[a-z0-9.'-]+(?:\s+[a-z0-9.'-]+){0,5}\s+"
+    r"(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|court|ct|"
+    r"circle|cir|parkway|pkwy|place|pl|way)\b",
+    re.IGNORECASE,
+)
+
+FRUSTRATION_CUES = (
+    "stop confirming",
+    "stop asking",
+    "already told",
+    "i said what i said",
+    "patience is running low",
+    "not reading another",
+    "why are you keep",
+    "why do you keep",
+    "just do it",
+    "go already",
+    "wrap it up",
+)
+
+ACTION_CUES = (
+    "let's get rolling",
+    "lets get rolling",
+    "get started",
+    "start now",
+    "start asap",
+    "asap",
+    "move forward",
+    "go ahead",
+    "proceed",
+    "you get it all",
+    "whatever you can find",
+)
+
+
+def conversation_text(payload: IntakeChat, role: str | None = None) -> str:
+    turns = [turn.text for turn in payload.conversation if role is None or turn.role == role]
+    if not turns and role in (None, "user"):
+        turns = [line for line in payload.project_summary.splitlines() if line.strip()]
+    return "\n".join(turns)
+
+
+def captured_address(payload: IntakeChat) -> str:
+    match = STREET_ADDRESS_PATTERN.search(conversation_text(payload, "user"))
+    return match.group(0).strip(" ,.") if match else ""
+
+
+def intake_should_handoff(payload: IntakeChat) -> bool:
+    """Stop discovery once the lead is actionable or the customer wants action."""
+    user_turns = [turn for turn in payload.conversation if turn.role == "user"]
+    user_turn_count = len(user_turns) or len(
+        [line for line in payload.project_summary.splitlines() if line.strip()]
+    )
+    assistant_questions = sum(
+        1 for turn in payload.conversation if turn.role == "assistant" and "?" in turn.text
+    )
+    user_text = conversation_text(payload, "user").lower()
+    word_count = len(re.findall(r"\b\w+\b", user_text))
+    has_scope = bool(payload.service_category or payload.media_notes or word_count >= 8)
+    is_frustrated = any(cue in user_text for cue in FRUSTRATION_CUES)
+    asks_for_action = any(cue in user_text for cue in ACTION_CUES)
+    latest_is_yes = payload.message.strip().lower().strip(".! ") in {
+        "yes", "yeah", "yep", "sure", "correct", "exactly"
+    }
+
+    if is_frustrated:
+        return True
+    if has_scope and (asks_for_action or (latest_is_yes and user_turn_count >= 2)):
+        return True
+    if has_scope and assistant_questions >= 2:
+        return True
+    if has_scope and user_turn_count >= 4:
+        return True
+    if has_scope and captured_address(payload) and user_turn_count >= 3:
+        return True
+    return False
+
+
+async def handoff_reply(payload: IntakeChat) -> str:
+    fallback = (
+        "I have enough to get this moving. I’ll carry these details into the visit request "
+        "so LODEX can turn them into an actionable, budget-conscious plan. Choose a preferred "
+        "visit window below."
+    )
+    if not os.getenv("OPENAI_API_KEY"):
+        return fallback
+    system = f"""You are the decisive sales-intake handoff for {BUSINESS_NAME}.
+Write one or two sentences, 55 words maximum. State that there is enough information to start, summarize the customer's desired outcome and strongest priority in plain language, then direct them to choose a visit window below.
+Do not ask a question. Do not request confirmation or clarification. Do not mention missing details, forms, AI, percentages, or final pricing. Do not use a question mark."""
+    prompt = f"Selected service: {payload.service_category or '(not selected)'}\nCustomer request:\n{conversation_text(payload, 'user')}\nMedia notes: {payload.media_notes or '(none)'}"
+    try:
+        response = await client().responses.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+            input=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+        )
+        reply = response.output_text.strip()
+        blocked_phrases = ("confirm", "clarify", "could you", "would you", "do you")
+        if not reply or "?" in reply or any(phrase in reply.lower() for phrase in blocked_phrases):
+            return fallback
+        return reply
+    except Exception as error:
+        print(f"LODEX handoff AI unavailable: {type(error).__name__}: {error}")
+        return fallback
 
 
 async def stripe_checkout_session(fields: list[tuple[str, str]], idempotency_key: str) -> dict[str, Any]:
@@ -293,27 +406,52 @@ async def upload_media(
 
 @app.post("/api/intake/chat")
 async def intake_chat(payload: IntakeChat):
+    handoff = intake_should_handoff(payload)
+    if handoff:
+        return {
+            "reply": await handoff_reply(payload),
+            "degraded": False,
+            "ready_to_schedule": True,
+            "captured_address": captured_address(payload),
+        }
     if not os.getenv("OPENAI_API_KEY"):
-        return {"reply": "What outcome do you want, and where is the work?"}
+        return {
+            "reply": "Tell us the main result you want. We’ll use that to set the next step without making you repeat yourself.",
+            "degraded": True,
+            "ready_to_schedule": False,
+            "captured_address": captured_address(payload),
+        }
     system = f"""You are the intake assistant for {BUSINESS_NAME}, a Northeast Ohio property-project service.
 Clarify renovation, repair, maintenance, delivery/installation, sourcing, cleaning, or surface-restoration work before a meet-and-greet.
-Default to ONE or TWO short sentences and about 45 words maximum. Never repeat, paraphrase, or recap what the customer just said; the UI already shows the project scope and progress percentage.
-Ask exactly ONE next question unless two tightly connected facts are genuinely needed. Never ask more than TWO questions in one reply.
-At a useful milestone, give at most one short acknowledgment and immediately ask the next high-value question. Do not turn the conversation into a questionnaire.
+Your objective is to convert an actionable lead, not collect every possible detail. Read the whole conversation and never ask for information the customer already gave.
+Default to ONE or TWO short sentences and about 45 words maximum. Never repeat, paraphrase, recap, or reconfirm what the customer just said.
+Ask at most ONE high-value question. The entire intake should contain no more than TWO assistant questions before moving to a visit.
+Do not ask for name, phone, email, address, or appointment time in chat; the visit step collects those. Do not force the customer to choose among acceptable options when they have explicitly delegated that choice to LODEX.
 Never state or imply a final price. Do not invent details from photos or videos. Clearly label uncertainty when it matters.
 Prioritize only the next missing detail among scope, location/area, material/item, dimensions/quantity, access/safety, desired result, timing, or an in-person confirmation.
 For cleaning/restoration, ask only the next needed fact about surface, condition, target result, water/power access, or finishes that must be preserved. Do not promise a method before review.
-Only when enough information exists for scope confirmation may you use a very compact checklist, no more than 60 words total, then ask the customer to confirm it and proceed to the meet-and-greet."""
-    prompt = f"Selected service: {payload.service_category or '(not selected)'}\nProject summary so far: {payload.project_summary or '(none)'}\nMedia notes: {payload.media_notes or '(none)'}\nCustomer says: {payload.message}"
+Never ask the customer to confirm a summary. If they say to start, proceed, use your judgment, find whatever works, or show frustration, stop discovery immediately and hand off to the visit step."""
+    history = conversation_text(payload)
+    prompt = f"Selected service: {payload.service_category or '(not selected)'}\nConversation so far:\n{history or payload.project_summary or '(none)'}\nMedia notes: {payload.media_notes or '(none)'}\nLatest customer message: {payload.message}"
     try:
         response = await client().responses.create(
             model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
             input=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
         )
-        return {"reply": response.output_text, "degraded": False}
+        return {
+            "reply": response.output_text,
+            "degraded": False,
+            "ready_to_schedule": False,
+            "captured_address": captured_address(payload),
+        }
     except Exception as error:
         print(f"LODEX chat AI unavailable: {type(error).__name__}: {error}")
-        return {"reply": "What outcome do you want, and where is the work?", "degraded": True}
+        return {
+            "reply": "I have enough to keep this moving. Continue to the visit request and LODEX will take it from there.",
+            "degraded": True,
+            "ready_to_schedule": True,
+            "captured_address": captured_address(payload),
+        }
 
 
 @app.post("/api/feedback")
@@ -353,7 +491,7 @@ async def lookup_project(code: str, phone: str):
                 "title": title,
                 "service_category": record.get("service_category", "General inquiry"),
                 "next_step": "LODEX will confirm the requested visit window and review any remaining details with you.",
-                "progress": 100 if record.get("assumptions_confirmed") else 72,
+                "progress": 100 if record.get("assumptions_confirmed") or record.get("intake_ready") else 72,
                 "scope_confirmed": bool(record.get("assumptions_confirmed")),
                 "requested_date": record.get("preferred_date"),
                 "requested_time": record.get("preferred_time"),
