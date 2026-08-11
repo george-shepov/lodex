@@ -1,34 +1,3 @@
-import { lodexVideoSrc } from './lodex-video/index.js'
-
-const replayDelayMs = 5000
-let replayTimer = null
-
-function installBrandVideo() {
-  const hero = document.querySelector('.hero-visual')
-  if (!hero || hero.querySelector('.lodex-brand-loop')) return
-  const target = hero.querySelector('.hero-image-main')
-  if (!target) return
-
-  const video = document.createElement('video')
-  video.className = 'lodex-brand-loop'
-  video.src = lodexVideoSrc
-  video.autoplay = true
-  video.muted = true
-  video.playsInline = true
-  video.preload = 'auto'
-  video.setAttribute('aria-label', 'LODEX animated brand sign')
-  video.addEventListener('ended', () => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    clearTimeout(replayTimer)
-    replayTimer = window.setTimeout(() => {
-      video.currentTime = 0
-      video.play().catch(() => {})
-    }, replayDelayMs)
-  })
-  target.replaceWith(video)
-  video.play().catch(() => {})
-}
-
 function installFooterMark() {
   const link = document.querySelector('.footer-brand-link')
   if (!link || link.querySelector('.footer-wordmark')) return
@@ -107,7 +76,6 @@ function installSurvey() {
 
 export function installLodexEnhancements() {
   const apply = () => {
-    installBrandVideo()
     installFooterMark()
     installSurvey()
   }
