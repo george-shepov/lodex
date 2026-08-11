@@ -93,6 +93,62 @@ def client() -> AsyncOpenAI:
     return AsyncOpenAI()
 
 
+ModelTier = Literal["luna", "terra", "sol"]
+MODEL_TIER_RANK: dict[ModelTier, int] = {"luna": 0, "terra": 1, "sol": 2}
+MODEL_DEFAULTS: dict[ModelTier, tuple[str, str]] = {
+    "luna": ("gpt-5.6-luna", "medium"),
+    "terra": ("gpt-5.6-terra", "high"),
+    "sol": ("gpt-5.6-sol", "xhigh"),
+}
+VALID_REASONING_EFFORTS = {"none", "low", "medium", "high", "xhigh", "max"}
+SOL_SCOPE_CUES = (
+    "load-bearing", "load bearing", "structural crack", "foundation failure",
+    "electrical panel", "breaker panel", "exposed wiring", "gas line", "gas leak",
+    "asbestos", "lead paint", "unstable structure", "collapse", "fire-damaged structure",
+)
+
+
+def model_route(tier: ModelTier) -> dict[str, str]:
+    default_model, default_effort = MODEL_DEFAULTS[tier]
+    model = os.getenv(f"OPENAI_MODEL_{tier.upper()}", default_model).strip() or default_model
+    effort = os.getenv(f"OPENAI_REASONING_{tier.upper()}", default_effort).strip().lower()
+    if effort not in VALID_REASONING_EFFORTS:
+        effort = default_effort
+    return {"tier": tier, "model": model, "reasoning_effort": effort}
+
+
+def choose_model_tier(text: str, *, profile_key: str = "", task: str = "qualification") -> ModelTier:
+    normalized = text.lower()
+    if any(cue in normalized for cue in SOL_SCOPE_CUES):
+        return "sol"
+    service_domains = sum(
+        bool(re.search(pattern, normalized))
+        for pattern in (
+            r"\b(?:furnish|sourc|shopping)\b",
+            r"\b(?:landscap|yard)\b",
+            r"\b(?:renovat|remodel|repair)\b",
+            r"\b(?:clean|restor|pressure wash)\b",
+            r"\b(?:deliver|assembl|install)\b",
+        )
+    )
+    if (
+        profile_key == "property_strategy"
+        or len(normalized) > 2500
+        or service_domains >= 3
+        or (task == "vision" and any(term in normalized for term in ("restoration", "fire damage", "structural")))
+    ):
+        return "terra"
+    return "luna"
+
+
+def public_route(route: dict[str, str]) -> dict[str, str]:
+    return {
+        "tier": route["tier"],
+        "model": route["model"],
+        "reasoning_effort": route["reasoning_effort"],
+    }
+
+
 def sanitize_filename(filename: str | None) -> str:
     name = Path(filename or "upload").name
     return re.sub(r"[^a-zA-Z0-9._-]", "_", name)[:120]
@@ -374,11 +430,14 @@ def handoff_fallback() -> str:
 
 async def ai_qualification_decision(
     payload: IntakeChat,
+    profile_key: str,
     profile: dict[str, Any],
     extra_count: int,
-) -> dict[str, Any] | None:
+) -> tuple[dict[str, Any] | None, dict[str, str]]:
+    routing_text = f"{conversation_text(payload, 'user')}\n{payload.service_category}\n{payload.media_notes}"
+    route = model_route(choose_model_tier(routing_text, profile_key=profile_key))
     if not os.getenv("OPENAI_API_KEY"):
-        return None
+        return None, public_route(route)
     requirements = profile["requirements"]
     requirement_guide = {
         requirement_id: {
@@ -398,19 +457,17 @@ If required facts are missing, ask exactly one concise question that can cover t
 Only after every required fact is covered may you ask an extra question. Ask an extra only when it materially improves visit preparation, selection, safety, or estimating. Never ask more than two extras total.
 If the customer's latest message asks a side question, answer it directly. A customer question never consumes the extra-question budget and must not be ignored merely to end intake.
 When qualified and no worthwhile extra remains, or the customer clearly says to proceed, produce a decisive handoff with no question and direct them to choose a visit window.
+Report your confidence honestly. Recommend Terra when the decision needs stronger ambiguity resolution or cross-service judgment. Recommend Sol only for genuinely difficult, safety-sensitive, structurally sensitive, or high-consequence judgment.
 Never ask for name, phone, email, street address, or appointment time in chat; the visit form collects those. Never ask the customer to confirm a recap. Never invent a final price."""
-    prompt = json.dumps(
-        {
-            "requirements": requirement_guide,
-            "suggested_extra_topics": profile["extras"],
-            "extra_questions_already_asked": extra_count,
-            "selected_service": payload.service_category or None,
-            "media_notes": payload.media_notes or None,
-            "latest_customer_message": payload.message,
-            "conversation": transcript,
-        },
-        ensure_ascii=False,
-    )
+    prompt_payload = {
+        "requirements": requirement_guide,
+        "suggested_extra_topics": profile["extras"],
+        "extra_questions_already_asked": extra_count,
+        "selected_service": payload.service_category or None,
+        "media_notes": payload.media_notes or None,
+        "latest_customer_message": payload.message,
+        "conversation": transcript,
+    }
     schema = {
         "type": "object",
         "properties": {
@@ -424,37 +481,56 @@ Never ask for name, phone, email, street address, or appointment time in chat; t
                 "enum": ["required_question", "extra_question", "customer_answer", "handoff"],
             },
             "reply": {"type": "string"},
+            "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+            "recommended_tier": {"type": "string", "enum": ["luna", "terra", "sol"]},
         },
-        "required": ["covered_required", "response_kind", "reply"],
+        "required": ["covered_required", "response_kind", "reply", "confidence", "recommended_tier"],
         "additionalProperties": False,
     }
-    try:
-        response = await client().responses.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-            input=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
-            text={
-                "format": {
-                    "type": "json_schema",
-                    "name": "lodex_qualification_decision",
-                    "strict": True,
-                    "schema": schema,
-                }
-            },
-        )
-        decision = json.loads(response.output_text)
-        if not isinstance(decision, dict):
-            return None
-        return decision
-    except Exception as error:
-        print(f"LODEX qualification AI unavailable: {type(error).__name__}: {error}")
-        return None
+    for escalation_attempt in range(3):
+        prompt_payload["current_model_tier"] = route["tier"]
+        prompt = json.dumps(prompt_payload, ensure_ascii=False)
+        try:
+            print(
+                f"LODEX qualification route={route['tier']} "
+                f"model={route['model']} effort={route['reasoning_effort']}"
+            )
+            response = await client().responses.create(
+                model=route["model"],
+                reasoning={"effort": route["reasoning_effort"]},
+                input=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+                text={
+                    "format": {
+                        "type": "json_schema",
+                        "name": "lodex_qualification_decision",
+                        "strict": True,
+                        "schema": schema,
+                    }
+                },
+            )
+            decision = json.loads(response.output_text)
+            if not isinstance(decision, dict):
+                return None, public_route(route)
+            recommended = str(decision.get("recommended_tier", route["tier"]))
+            if (
+                escalation_attempt < 2
+                and recommended in MODEL_TIER_RANK
+                and MODEL_TIER_RANK[recommended] > MODEL_TIER_RANK[route["tier"]]
+            ):
+                route = model_route(recommended)  # type: ignore[arg-type]
+                continue
+            return decision, public_route(route)
+        except Exception as error:
+            print(f"LODEX qualification AI unavailable: {type(error).__name__}: {error}")
+            return None, public_route(route)
+    return None, public_route(route)
 
 
 async def qualification_decision(payload: IntakeChat) -> dict[str, Any]:
     profile_key, profile = qualification_profile(payload)
     requirements = profile["requirements"]
     extra_count = extra_questions_asked(payload)
-    decision = await ai_qualification_decision(payload, profile, extra_count)
+    decision, route = await ai_qualification_decision(payload, profile_key, profile, extra_count)
     covered = fallback_requirement_coverage(payload, profile)
     if decision:
         covered.update(
@@ -464,6 +540,11 @@ async def qualification_decision(payload: IntakeChat) -> dict[str, Any]:
         )
     missing = [requirement_id for requirement_id in requirements if requirement_id not in covered]
     status = qualification_status(profile_key, profile, covered)
+    response_meta = {
+        "qualification": status,
+        "ai_route": route,
+        "degraded": decision is None,
+    }
     reply = str((decision or {}).get("reply", "")).strip()
     response_kind = str((decision or {}).get("response_kind", ""))
     latest_text = payload.message.lower()
@@ -479,8 +560,7 @@ async def qualification_decision(payload: IntakeChat) -> dict[str, Any]:
             "reply": reply,
             "ready_to_schedule": False,
             "question_kind": "required",
-            "qualification": status,
-        }
+        } | response_meta
 
     if wants_action or is_frustrated:
         if response_kind != "handoff" or not reply or "?" in reply:
@@ -489,8 +569,7 @@ async def qualification_decision(payload: IntakeChat) -> dict[str, Any]:
             "reply": reply,
             "ready_to_schedule": True,
             "question_kind": "handoff",
-            "qualification": status,
-        }
+        } | response_meta
 
     if latest_question:
         if response_kind != "customer_answer" or not reply:
@@ -499,16 +578,14 @@ async def qualification_decision(payload: IntakeChat) -> dict[str, Any]:
             "reply": reply,
             "ready_to_schedule": False,
             "question_kind": "answer",
-            "qualification": status,
-        }
+        } | response_meta
 
     if extra_count < 2 and response_kind == "extra_question" and "?" in reply:
         return {
             "reply": reply,
             "ready_to_schedule": False,
             "question_kind": "extra",
-            "qualification": status,
-        }
+        } | response_meta
 
     if response_kind != "handoff" or not reply or "?" in reply:
         reply = handoff_fallback()
@@ -516,8 +593,7 @@ async def qualification_decision(payload: IntakeChat) -> dict[str, Any]:
         "reply": reply,
         "ready_to_schedule": True,
         "question_kind": "handoff",
-        "qualification": status,
-    }
+    } | response_meta
 
 
 async def stripe_checkout_session(fields: list[tuple[str, str]], idempotency_key: str) -> dict[str, Any]:
@@ -575,8 +651,16 @@ async def analyze_image(path: Path, media_type: str, description: str, service_c
     encoded = base64.b64encode(path.read_bytes()).decode("ascii")
     prompt = f"""This is a customer-uploaded image for {BUSINESS_NAME}. The selected service is: {service_category or '(not selected)'}. Customer description: {description or '(none)'}.
 Describe only visible, relevant job details. Separate what you can see from what must be confirmed. Ask no more than two questions needed to scope the requested visit. For cleaning or restoration, identify the surface and any visible uncertainty but do not prescribe a method without confirmation. Never state a price, never claim licensing or insurance, and never assume hidden damage or dimensions."""
+    route = model_route(
+        choose_model_tier(f"{description}\n{service_category}", task="vision")
+    )
+    print(
+        f"LODEX vision route={route['tier']} "
+        f"model={route['model']} effort={route['reasoning_effort']}"
+    )
     result = await client().responses.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+        model=route["model"],
+        reasoning={"effort": route["reasoning_effort"]},
         input=[{"role": "user", "content": [
             {"type": "input_text", "text": prompt},
             {"type": "input_image", "image_url": f"data:{media_type};base64,{encoded}"},
@@ -596,7 +680,14 @@ def first_video_frame(video_path: Path) -> Path | None:
 
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "ai_configured": bool(os.getenv("OPENAI_API_KEY"))}
+    return {
+        "ok": True,
+        "ai_configured": bool(os.getenv("OPENAI_API_KEY")),
+        "model_router": {
+            tier: public_route(model_route(tier))
+            for tier in ("luna", "terra", "sol")
+        },
+    }
 
 
 @app.websocket("/api/virtual/rooms/{room_id}")
@@ -676,7 +767,6 @@ async def upload_media(
 async def intake_chat(payload: IntakeChat):
     decision = await qualification_decision(payload)
     return decision | {
-        "degraded": not bool(os.getenv("OPENAI_API_KEY")),
         "captured_address": captured_address(payload),
     }
 

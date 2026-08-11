@@ -25,9 +25,13 @@ def no_ai_key(monkeypatch: pytest.MonkeyPatch):
 
 def install_fake_ai(monkeypatch: pytest.MonkeyPatch, decision: dict):
     captured = {}
+    complete_decision = {
+        "confidence": "high",
+        "recommended_tier": "luna",
+    } | decision
 
     class FakeResponse:
-        output_text = json.dumps(decision)
+        output_text = json.dumps(complete_decision)
 
     class FakeResponses:
         async def create(self, **kwargs):
@@ -40,6 +44,30 @@ def install_fake_ai(monkeypatch: pytest.MonkeyPatch, decision: dict):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setattr(main, "client", lambda: FakeClient())
     return captured
+
+
+def install_fake_ai_sequence(monkeypatch: pytest.MonkeyPatch, decisions: list[dict]):
+    calls = []
+    remaining = [
+        {"confidence": "high", "recommended_tier": "luna"} | decision
+        for decision in decisions
+    ]
+
+    class FakeResponse:
+        def __init__(self, decision: dict):
+            self.output_text = json.dumps(decision)
+
+    class FakeResponses:
+        async def create(self, **kwargs):
+            calls.append(kwargs)
+            return FakeResponse(remaining.pop(0))
+
+    class FakeClient:
+        responses = FakeResponses()
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(main, "client", lambda: FakeClient())
+    return calls
 
 
 def test_qualified_property_lead_moves_to_visit_after_required_facts_are_covered():
@@ -219,6 +247,105 @@ def test_customer_side_question_is_answered_without_consuming_extra_budget(monke
     assert body["ready_to_schedule"] is False
     assert body["question_kind"] == "answer"
     assert "card" in body["reply"].lower()
+
+
+def test_normal_intake_uses_luna_with_medium_reasoning(monkeypatch: pytest.MonkeyPatch):
+    captured = install_fake_ai(
+        monkeypatch,
+        {
+            "covered_required": [],
+            "response_kind": "required_question",
+            "reply": "How many rooms need furniture?",
+        },
+    )
+
+    body = api_request(
+        "POST",
+        "/api/intake/chat",
+        json={
+            "message": "I need affordable furniture for a bedroom.",
+            "project_summary": "I need affordable furniture for a bedroom.",
+            "service_category": "Shopping, Sourcing & Procurement",
+            "conversation": [{"role": "user", "text": "I need affordable furniture for a bedroom."}],
+        },
+    ).json()
+
+    assert captured["model"] == "gpt-5.6-luna"
+    assert captured["reasoning"] == {"effort": "medium"}
+    assert body["ai_route"] == {
+        "tier": "luna",
+        "model": "gpt-5.6-luna",
+        "reasoning_effort": "medium",
+    }
+
+
+def test_property_strategy_starts_on_terra():
+    body = api_request(
+        "POST",
+        "/api/intake/chat",
+        json={
+            "message": "Help me decide whether to sell, privately rent, or Airbnb after refreshing the whole property.",
+            "project_summary": "Help me decide whether to sell, privately rent, or Airbnb after refreshing the whole property.",
+            "service_category": "Shopping, Sourcing & Procurement",
+            "conversation": [{"role": "user", "text": "Help me decide whether to sell, privately rent, or Airbnb after refreshing the whole property."}],
+        },
+    ).json()
+
+    assert body["ai_route"]["tier"] == "terra"
+    assert body["ai_route"]["model"] == "gpt-5.6-terra"
+    assert body["ai_route"]["reasoning_effort"] == "high"
+
+
+def test_safety_sensitive_scope_starts_on_sol():
+    body = api_request(
+        "POST",
+        "/api/intake/chat",
+        json={
+            "message": "I need help around exposed wiring and a structural crack.",
+            "project_summary": "I need help around exposed wiring and a structural crack.",
+            "service_category": "Handyman Repairs",
+            "conversation": [{"role": "user", "text": "I need help around exposed wiring and a structural crack."}],
+        },
+    ).json()
+
+    assert body["ai_route"]["tier"] == "sol"
+    assert body["ai_route"]["model"] == "gpt-5.6-sol"
+    assert body["ai_route"]["reasoning_effort"] == "xhigh"
+
+
+def test_luna_can_escalate_qualification_to_terra(monkeypatch: pytest.MonkeyPatch):
+    decisions = [
+        {
+            "covered_required": [],
+            "response_kind": "required_question",
+            "reply": "What outcome matters most?",
+            "confidence": "low",
+            "recommended_tier": "terra",
+        },
+        {
+            "covered_required": [],
+            "response_kind": "required_question",
+            "reply": "What outcome matters most?",
+            "confidence": "high",
+            "recommended_tier": "terra",
+        },
+    ]
+    calls = install_fake_ai_sequence(monkeypatch, decisions)
+
+    body = api_request(
+        "POST",
+        "/api/intake/chat",
+        json={
+            "message": "I need help choosing furniture.",
+            "project_summary": "I need help choosing furniture.",
+            "service_category": "Shopping, Sourcing & Procurement",
+            "conversation": [{"role": "user", "text": "I need help choosing furniture."}],
+        },
+    ).json()
+
+    assert [call["model"] for call in calls] == ["gpt-5.6-luna", "gpt-5.6-terra"]
+    assert [call["reasoning"]["effort"] for call in calls] == ["medium", "high"]
+    assert body["ai_route"]["tier"] == "terra"
 
 
 def test_intake_ready_project_reports_complete_progress(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

@@ -8,9 +8,11 @@ Customer-facing handyman intake: a visitor describes what needs to be built or f
 
 The intake uses service-specific qualification playbooks. Required questions continue until the facts needed for that service are covered; after qualification, the assistant may ask at most two material extras. Customer side questions are answered directly and never consume that extra-question budget.
 
+AI requests use the Responses API with a three-tier GPT-5.6 router. Luna with medium reasoning handles ordinary intake and image review. Cross-service, property-strategy, ambiguous, or unusually long cases escalate to Terra with high reasoning. Safety-sensitive and structurally consequential cases escalate to Sol with xhigh reasoning. The qualification model may also recommend an upward escalation when the initial route needs stronger judgment; routes never downgrade within a request.
+
 ## Run locally
 
-1. Copy `.env.example` to `.env.local` and supply the server-side `OPENAI_API_KEY` from the vault.
+1. Copy `.env.example` to `.env.local` and supply the server-side `OPENAI_API_KEY` from the vault. The checked-in GPT-5.6 model and reasoning defaults can be overridden there when needed.
 2. `docker compose up --build`
 3. Open `http://localhost:4175`.
 
