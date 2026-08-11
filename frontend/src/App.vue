@@ -195,14 +195,15 @@ async function book() {
   } catch (error) { notice.value = error.message } finally { sending.value = false }
 }
 async function startDeposit() {
-  if (!projectCode.value || !appointment.value.phone) return
+  const checkoutPhone = projectPhone.value.trim() || appointment.value.phone.trim()
+  if (!projectCode.value || !checkoutPhone) return
   sending.value = true
   paymentError.value = ''
   try {
     const response = await fetch('/api/payments/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_code: projectCode.value, phone: appointment.value.phone }),
+      body: JSON.stringify({ project_code: projectCode.value, phone: checkoutPhone }),
     })
     const data = await readApiResponse(response, 'Could not start the deposit payment.')
     paymentStatus.value = data.status || 'checkout_created'
@@ -215,12 +216,14 @@ async function startDeposit() {
 }
 async function lookupProject() {
   projectError.value = ''
+  paymentError.value = ''
   project.value = null
   if (!projectCode.value.trim() || !projectPhone.value.trim()) { projectError.value = 'Enter your project code and the phone number used for the request.'; return }
   try {
     const query = new URLSearchParams({ code: projectCode.value.trim(), phone: projectPhone.value.trim() })
     const response = await fetch(`/api/projects/lookup?${query}`)
     project.value = await readApiResponse(response, 'Project not found.')
+    paymentStatus.value = project.value.payment_status || 'not_started'
   } catch (error) { projectError.value = error.message }
 }
 async function openVirtualMeet() {
@@ -343,7 +346,7 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stop
         <div v-else class="success-card"><p class="eyebrow">Request received</p><h3>We’ll confirm the visit shortly.</h3><p>{{ notice }}</p><div v-if="projectCode" class="project-code"><span>Your project code</span><b>{{ projectCode }}</b><small>Save this code with the phone number you used. You can return to the project portal below.</small></div><div v-if="paymentStatus === 'paid'" class="payment-confirmed">Deposit payment recorded.</div><button v-else type="button" class="primary-button" @click="startDeposit" :disabled="sending">{{ sending ? 'Opening secure checkout…' : 'Pay a requested deposit' }} <span>↗</span></button><p v-if="paymentError" class="error">{{ paymentError }}</p><a class="text-link" href="#project">Open my project details →</a></div>
       </div></section>
 
-      <section id="project" class="project-section page-width"><div class="section-heading"><div><p class="eyebrow">Returning customers</p><h2>Your project, in one place.</h2></div><p>Use your project code and the phone number on the request to see the latest scope and next step.</p></div><form class="lookup-card" @submit.prevent="lookupProject"><label>Project code<input v-model="projectCode" placeholder="LDX-123456" autocomplete="off"/></label><label>Phone used for the request<input v-model="projectPhone" type="tel" placeholder="216-555-0123" autocomplete="tel"/></label><button type="submit" class="primary-button">Open my project <span>↗</span></button><p v-if="projectError" class="error">{{ projectError }}</p><div v-if="project" class="project-result"><div class="project-result-top"><span>{{ project.status }}</span><b>{{ project.progress }}%</b></div><h3>{{ project.title }}</h3><p v-if="project.service_category" class="project-service">{{ project.service_category }}</p><p>{{ project.next_step }}</p><div class="meter-track"><i :style="{ width: `${project.progress}%` }"></i></div><small>Scope confirmation: {{ project.scope_confirmed ? '100% confirmed' : 'still being reviewed' }}</small><button type="button" class="virtual-button" @click="openVirtualMeet">▣ Start virtual meet-and-greet</button></div></form></section>
+      <section id="project" class="project-section page-width"><div class="section-heading"><div><p class="eyebrow">Returning customers</p><h2>Your project, in one place.</h2></div><p>Use your project code and the phone number on the request to see the latest scope and next step.</p></div><form class="lookup-card" @submit.prevent="lookupProject"><label>Project code<input v-model="projectCode" placeholder="LDX-123456" autocomplete="off"/></label><label>Phone used for the request<input v-model="projectPhone" type="tel" placeholder="216-555-0123" autocomplete="tel"/></label><button type="submit" class="primary-button">Open my project <span>↗</span></button><p v-if="projectError" class="error">{{ projectError }}</p><div v-if="project" class="project-result"><div class="project-result-top"><span>{{ project.status }}</span><b>{{ project.progress }}%</b></div><h3>{{ project.title }}</h3><p v-if="project.service_category" class="project-service">{{ project.service_category }}</p><p>{{ project.next_step }}</p><div class="meter-track"><i :style="{ width: `${project.progress}%` }"></i></div><small>Scope confirmation: {{ project.scope_confirmed ? '100% confirmed' : 'still being reviewed' }}</small><div v-if="paymentStatus === 'paid'" class="payment-confirmed">Deposit payment recorded.</div><button v-else type="button" class="primary-button" @click="startDeposit" :disabled="sending">{{ sending ? 'Opening secure checkout…' : 'Pay a requested deposit' }} <span>↗</span></button><p v-if="paymentError" class="error">{{ paymentError }}</p><button type="button" class="virtual-button" @click="openVirtualMeet">▣ Start virtual meet-and-greet</button></div></form></section>
     </template>
 
     <footer class="site-footer"><div class="footer-shell"><section class="footer-intro"><a class="footer-brand-link" href="/" @click.prevent="goHome"><img class="footer-logo" src="/lodex-logo-blended.svg" alt="LODEX Residential & Commercial Services"/></a><p>One practical partner for property projects across Northeast Ohio—from sourcing to the finished walkthrough.</p></section><nav class="footer-group"><span>Services</span><a v-for="service in services" :key="service.slug" :href="serviceHref(service)" @click.prevent="openService(service)">{{ service.short }}</a></nav><nav class="footer-group"><span>Your project</span><a href="/#intake" @click.prevent="goHome">Start a project</a><a href="/#project" @click.prevent="goHome">Open my project</a><a :href="phoneHref">Call {{ phone }}</a></nav><div class="footer-bottom"><span>© {{ new Date().getFullYear() }} LODEX · v{{ packageMetadata.version }}</span><span>Clear scope. Thoughtful work. No surprises.</span></div></div></footer>
