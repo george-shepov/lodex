@@ -6,6 +6,8 @@
 
 Customer-facing handyman intake: a visitor describes what needs to be built or fixed, uploads a photo/video, confirms the working assumptions in chat, and requests an in-person meet-and-greet before a final price is set.
 
+The intake uses service-specific qualification playbooks. Required questions continue until the facts needed for that service are covered; after qualification, the assistant may ask at most two material extras. Customer side questions are answered directly and never consume that extra-question budget.
+
 ## Run locally
 
 1. Copy `.env.example` to `.env.local` and supply the server-side `OPENAI_API_KEY` from the vault.

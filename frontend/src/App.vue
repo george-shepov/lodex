@@ -13,6 +13,7 @@ const sending = ref(false)
 const agreed = ref(false)
 const intakeReady = ref(false)
 const handoffMessage = ref('')
+const qualification = ref({ progress: 0, qualified: false, label: '', requirements: [] })
 const supportOpen = ref(false)
 const projectCode = ref('')
 const projectPhone = ref('')
@@ -135,14 +136,14 @@ const messages = ref([{ role: 'assistant', text: 'What can LODEX take off your p
 const activeService = computed(() => services.find(service => currentPath.value.replace(/\/$/, '') === `/services/${service.slug}`) || null)
 const summary = computed(() => messages.value.filter(item => item.role === 'user').map(item => item.text).join('\n'))
 const hasCustomerMessage = computed(() => messages.value.some(item => item.role === 'user'))
-const scopePercent = computed(() => intakeReady.value || agreed.value ? 100 : Math.min(75, messages.value.filter(item => item.role === 'user').length * 25))
-const scopeLabel = computed(() => agreed.value ? 'Scope confirmed' : intakeReady.value ? 'Ready for the next step' : hasCustomerMessage.value ? 'Scope in conversation' : 'Ready when you are')
+const scopePercent = computed(() => agreed.value ? 100 : qualification.value.progress || 0)
+const scopeLabel = computed(() => agreed.value ? 'Scope confirmed' : intakeReady.value ? 'Ready for the next step' : qualification.value.qualified ? 'Lead qualified · optional details' : hasCustomerMessage.value ? 'Qualifying the project' : 'Ready when you are')
 const canSchedule = computed(() => hasCustomerMessage.value || uploaded.value)
 const intakeTitle = computed(() => selectedService.value?.title || 'Your project')
 
 function serviceHref(service) { return `/services/${service.slug}` }
-function add(role, text) {
-  messages.value.push({ role, text })
+function add(role, text, kind = null) {
+  messages.value.push({ role, text, ...(kind ? { kind } : {}) })
   nextTick(() => document.querySelector('.messages')?.scrollTo({ top: 99999, behavior: 'smooth' }))
 }
 function scrollToIntake() { document.querySelector('#intake')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
@@ -215,15 +216,18 @@ async function send() {
   add('user', text)
   sending.value = true
   try {
-    const conversation = messages.value.slice(-24).map(item => ({ role: item.role, text: item.text }))
+    const conversation = messages.value.slice(-24).map(item => ({ role: item.role, text: item.text, ...(item.kind ? { kind: item.kind } : {}) }))
     const response = await fetch('/api/intake/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, project_summary: summary.value, media_notes: uploaded.value ? `${uploaded.value.filename}: ${description.value}` : '', service_category: selectedService.value?.title || '', conversation }) })
     const data = await readApiResponse(response, 'Unable to continue the scope review.')
-    add('assistant', data.reply)
+    add('assistant', data.reply, data.question_kind)
+    if (data.qualification) qualification.value = data.qualification
     if (data.captured_address && !appointment.value.address) appointment.value.address = data.captured_address
+    intakeReady.value = Boolean(data.ready_to_schedule)
     if (data.ready_to_schedule) {
-      intakeReady.value = true
       handoffMessage.value = data.reply
       nextTick(openSchedule)
+    } else {
+      handoffMessage.value = ''
     }
   } catch (error) { add('assistant', `${error.message} We can still collect the details and arrange a meet-and-greet.`) } finally { sending.value = false }
 }
@@ -234,7 +238,7 @@ async function book() {
   paymentError.value = ''
   try {
     const uploads = uploaded.value ? [{ upload_id: uploaded.value.upload_id, filename: uploaded.value.filename, media_type: uploaded.value.media_type, description: description.value }] : []
-    const response = await fetch('/api/appointments/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...appointment.value, project_summary: summary.value || 'Customer requested an in-person meet-and-greet.', service_category: selectedService.value?.title || 'General inquiry', uploads, assumptions_confirmed: agreed.value, intake_ready: intakeReady.value }) })
+    const response = await fetch('/api/appointments/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...appointment.value, project_summary: summary.value || 'Customer requested an in-person meet-and-greet.', service_category: selectedService.value?.title || 'General inquiry', uploads, assumptions_confirmed: agreed.value, intake_ready: qualification.value.qualified }) })
     const data = await readApiResponse(response, 'Could not request appointment.')
     notice.value = data.message
     projectCode.value = data.project_code || ''
@@ -435,11 +439,11 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stop
 
       <section id="how-it-works" class="how-section"><div class="page-width"><p class="eyebrow">Simple by design</p><div class="how-grid"><h2>Clear scope before the work begins.</h2><div class="how-steps"><div><b>01</b><h3>Tell us the outcome</h3><p>Choose a service, describe the job, or send photos and short video.</p></div><div><b>02</b><h3>Confirm the real details</h3><p>We ask only what is needed to understand scope, access, timing, and materials.</p></div><div><b>03</b><h3>Set the next step</h3><p>Request a meet-and-greet or coordinated visit—then get a clear, confirmed plan.</p></div></div></div></div></section>
 
-      <section id="intake" class="intake-section"><div class="page-width"><div class="intake-head"><div><p class="eyebrow">Start your project</p><h2>Let’s figure out <em>what’s next.</em></h2><p class="intake-copy">Selected service: <b>{{ intakeTitle }}</b></p></div><div class="scope-meter"><div class="scope-meter-top"><span>{{ scopeLabel }}</span><b>{{ scopePercent }}%</b></div><div class="meter-track"><i :style="{ width: `${scopePercent}%` }"></i></div><small>{{ intakeReady ? 'Enough detail captured to take action.' : 'A few useful details are enough to move forward.' }}</small></div></div>
+      <section id="intake" class="intake-section"><div class="page-width"><div class="intake-head"><div><p class="eyebrow">Start your project</p><h2>Let’s figure out <em>what’s next.</em></h2><p class="intake-copy">Selected service: <b>{{ intakeTitle }}</b></p></div><div class="scope-meter"><div class="scope-meter-top"><span>{{ scopeLabel }}</span><b>{{ scopePercent }}%</b></div><div class="meter-track"><i :style="{ width: `${scopePercent}%` }"></i></div><small>{{ qualification.qualified ? 'The required facts are covered; useful extras can still improve the visit.' : 'Progress reflects the service facts we actually need—not the number of messages.' }}</small></div></div>
         <div class="service-chips" aria-label="Choose a service"><button v-for="service in services" :key="service.slug" type="button" :class="{ selected: selectedService?.slug === service.slug }" @click="chooseService(service, false)">{{ service.short }}</button></div>
         <div class="flow"><span :class="{ active: step === 'chat' }">1. Talk it through</span><span :class="{ active: step === 'schedule' }">2. Request a visit</span><span :class="{ active: step === 'done' }">3. Keep the details</span></div>
         <div v-if="step === 'chat'" class="workspace"><div class="chat-card"><div class="chat-title"><i></i><div><b>LODEX project intake</b><small>Human-friendly questions, with AI help when useful.</small></div><button type="button" class="mini-link" @click="openSchedule">Request a visit ↗</button></div><div class="messages"><article v-for="(item, index) in messages" :key="index" :class="item.role"><p>{{ item.text }}</p></article><div v-if="sending" class="assistant"><p class="typing">Thinking through the project…</p></div></div><form class="composer" @submit.prevent="send"><textarea v-model="message" :disabled="sending" placeholder="For example: I need a TV mounted above a brick fireplace…" rows="3"></textarea><button type="submit" :disabled="sending || !message.trim()">Send</button></form></div>
-          <aside class="upload-card"><p class="eyebrow">Helpful, not required</p><h3>Show us the work area.</h3><p>Photos and short videos help us ask better questions. They do not create a final estimate.</p><label class="file-picker"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,video/mp4,video/quicktime,video/webm" @change="selectedFile = $event.target.files[0]"/><span>{{ selectedFile ? selectedFile.name : 'Choose photo or video' }}</span><b>＋</b></label><textarea v-model="description" placeholder="Anything we should notice?"></textarea><button type="button" class="outline-button" @click="upload" :disabled="!selectedFile || sending">{{ sending ? 'Uploading…' : 'Upload & analyze' }}</button><label class="confirm"><input v-model="agreed" type="checkbox" :disabled="!hasCustomerMessage"/><span>I reviewed the captured scope and it is accurate to the best of my knowledge.</span></label><button type="button" class="ready-button" @click="openSchedule" :disabled="!canSchedule">{{ intakeReady ? 'Choose a visit time' : 'Continue to meet-and-greet' }} <span>↗</span></button></aside></div>
+          <aside class="upload-card"><p class="eyebrow">Helpful, not required</p><h3>Show us the work area.</h3><p>Photos and short videos help us ask better questions. They do not create a final estimate.</p><label class="file-picker"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,video/mp4,video/quicktime,video/webm" @change="selectedFile = $event.target.files[0]"/><span>{{ selectedFile ? selectedFile.name : 'Choose photo or video' }}</span><b>＋</b></label><textarea v-model="description" placeholder="Anything we should notice?"></textarea><button type="button" class="outline-button" @click="upload" :disabled="!selectedFile || sending">{{ sending ? 'Uploading…' : 'Upload & analyze' }}</button><div v-if="qualification.requirements.length" class="qualification-checklist"><small>{{ qualification.label }}</small><ul><li v-for="item in qualification.requirements" :key="item.id" :class="{ covered: item.covered }"><span>{{ item.covered ? '✓' : '○' }}</span>{{ item.label }}</li></ul></div><label class="confirm"><input v-model="agreed" type="checkbox" :disabled="!hasCustomerMessage"/><span>I reviewed the captured scope and it is accurate to the best of my knowledge.</span></label><button type="button" class="ready-button" @click="openSchedule" :disabled="!canSchedule">{{ qualification.qualified ? 'Choose a visit time' : 'Continue to meet-and-greet' }} <span>↗</span></button></aside></div>
         <form v-else-if="step === 'schedule'" class="schedule-card" @submit.prevent="book"><div><p class="eyebrow">Next: a real-world check</p><h3>Request your meet-and-greet.</h3><p>{{ handoffMessage || 'Choose a preferred window. We’ll confirm the visit and clarify anything still unknown before a final price is set.' }}</p></div><div class="fields"><input v-model="appointment.name" required placeholder="Your name"/><input v-model="appointment.phone" required placeholder="Phone"/><input v-model="appointment.email" type="email" placeholder="Email (optional)"/><input v-model="appointment.address" required placeholder="Job address"/><input v-model="appointment.preferred_date" required type="date"/><select v-model="appointment.preferred_time" required><option disabled value="">Preferred arrival window</option><option>Morning · 9 AM–12 PM</option><option>Afternoon · 12 PM–3 PM</option><option>Late afternoon · 3 PM–6 PM</option></select></div><div class="schedule-actions"><button type="submit" class="primary-button" :disabled="sending">{{ sending ? 'Sending…' : 'Request meet-and-greet' }} <span>↗</span></button><button type="button" class="back-button" @click="step = 'chat'">Back to conversation</button></div><p v-if="notice" class="notice">{{ notice }}</p></form>
         <div v-else class="success-card"><p class="eyebrow">Request received</p><h3>We’ll confirm the visit shortly.</h3><p>{{ notice }}</p><div v-if="projectCode" class="project-code"><span>Your project code</span><b>{{ projectCode }}</b><small>Save this code with the phone number you used. You can return to the project portal below.</small></div><div v-if="paymentStatus === 'paid'" class="payment-confirmed">Deposit payment recorded.</div><button v-else type="button" class="primary-button" @click="startDeposit" :disabled="sending">{{ sending ? 'Opening secure checkout…' : 'Pay a requested deposit' }} <span>↗</span></button><p v-if="paymentError" class="error">{{ paymentError }}</p><a class="text-link" href="#project">Open my project details →</a></div>
       </div></section>
