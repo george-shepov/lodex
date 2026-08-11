@@ -94,6 +94,38 @@ const services = [
   },
 ]
 
+const laserProjects = [
+  {
+    title: 'Rust removal in tight detail',
+    category: 'Metal restoration',
+    description: 'A controlled laser pass lifts corrosion from a hinge without abrasive blasting.',
+    video: '/portfolio/laser/rusted-hinge-laser-cleaning.mp4',
+    poster: '/portfolio/laser/rusted-hinge-laser-cleaning.webp',
+    featured: true,
+  },
+  {
+    title: 'Paint lifted from metal',
+    category: 'Coating removal',
+    description: 'Paint removal demonstrated on a shaped metal surface with the working edge kept visible.',
+    video: '/portfolio/laser/blue-metal-paint-removal.mp4',
+    poster: '/portfolio/laser/blue-metal-paint-removal.webp',
+  },
+  {
+    title: 'Fire residue on stone',
+    category: 'Masonry restoration',
+    description: 'A short field demonstration of laser cleaning on a smoke- and fire-marked stone surface.',
+    video: '/portfolio/laser/stone-fire-residue-cleaning.mp4',
+    poster: '/portfolio/laser/stone-fire-residue-cleaning.webp',
+  },
+  {
+    title: 'Surface buildup on metal',
+    category: 'Precision cleaning',
+    description: 'A narrow pass removes surface contamination while preserving the panel geometry.',
+    video: '/portfolio/laser/metal-panel-surface-cleaning.mp4',
+    poster: '/portfolio/laser/metal-panel-surface-cleaning.webp',
+  },
+]
+
 const messages = ref([{ role: 'assistant', text: 'What can LODEX take off your plate? Choose a service below, tell us in your own words, or show us the space.' }])
 const activeService = computed(() => services.find(service => currentPath.value.replace(/\/$/, '') === `/services/${service.slug}`) || null)
 const summary = computed(() => messages.value.filter(item => item.role === 'user').map(item => item.text).join('\n'))
@@ -358,6 +390,9 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stop
         </div>
       </section>
       <section class="service-details page-width"><div><p class="section-kicker">Included services</p><ul><li v-for="item in activeService.includes" :key="item">{{ item }}</li></ul></div><div><p class="section-kicker">A good fit when</p><ul><li v-for="item in activeService.useCases" :key="item">{{ item }}</li></ul></div></section>
+      <section v-if="activeService.slug === 'cleaning-restoration'" class="laser-showcase laser-showcase-service">
+        <div class="page-width"><div class="section-heading"><div><p class="eyebrow">Real laser-cleaning footage</p><h2>Watch the surface change.</h2></div><p>Short field demonstrations from our laser-restoration partner. Every project still begins with a material and finish review.</p></div><div class="laser-grid"><article v-for="project in laserProjects" :key="project.video" class="laser-card"><video :autoplay="project.featured" muted loop playsinline controls preload="metadata" :poster="project.poster" :aria-label="project.title"><source :src="project.video" type="video/mp4"/></video><div><span>{{ project.category }}</span><h3>{{ project.title }}</h3><p>{{ project.description }}</p></div></article></div></div>
+      </section>
       <section class="service-next"><div class="page-width"><p class="eyebrow">Start with the real details</p><h2>Photo, video, or a few plain words is enough to begin.</h2><button type="button" class="primary-button" @click="startFromService(activeService)">Tell us about it <span>↗</span></button></div></section>
     </template>
 
@@ -370,6 +405,8 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stop
       <section id="inspiration" class="inspiration-section page-width"><div class="section-heading"><div><p class="eyebrow">Inspiration gallery</p><h2>See what thoughtful work can look like.</h2></div><p>These LZ Custom examples show the range—from cabinetry and stone to tile, bathrooms, and commercial spaces. Use them as a starting point, then send us the details of your own project.</p></div><div class="inspiration-grid"><figure><img src="/inspiration/lz-cabinetry.png" alt="Custom wood cabinetry detail" loading="lazy"/><figcaption><b>Cabinetry</b><span>Built-ins, kitchens, and storage</span></figcaption></figure><figure><img src="/inspiration/lz-countertops.png" alt="Granite countertop installation" loading="lazy"/><figcaption><b>Stone & countertops</b><span>Measure, source, fabricate, install</span></figcaption></figure><figure><img src="/inspiration/lz-tile.png" alt="Precision tile installation" loading="lazy"/><figcaption><b>Tile & surfaces</b><span>Clean layouts and careful finish work</span></figcaption></figure><figure><img src="/inspiration/lz-bathroom.png" alt="Luxury bathroom with stone finishes" loading="lazy"/><figcaption><b>Bathrooms</b><span>Refresh, repair, and restore</span></figcaption></figure><figure><img src="/inspiration/lz-commercial.png" alt="Commercial interior painting project" loading="lazy"/><figcaption><b>Commercial spaces</b><span>Durable improvements with less disruption</span></figcaption></figure></div></section>
 
       <section id="services" class="services-section page-width"><div class="section-heading"><div><p class="eyebrow">LODEX services</p><h2>Renovate, repair, deliver, source, and restore.</h2></div><p>Five clear ways to start. Every service begins with a practical look at scope, access, timing, materials, and the next step.</p></div><div class="service-grid"><a v-for="(service, index) in services" :key="service.slug" class="service-card" :href="serviceHref(service)" @click.prevent="openService(service)"><span>0{{ index + 1 }}</span><h3>{{ service.title }}</h3><p>{{ service.summary }}</p><b>Explore service →</b></a></div></section>
+
+      <section id="laser-restoration" class="laser-showcase"><div class="page-width"><div class="section-heading"><div><p class="eyebrow">LODEX × Cyber Carp</p><h2>Laser restoration you can see.</h2></div><p>Rust, paint, surface buildup, and fire residue—shown in real working clips, not stock footage.</p></div><div class="laser-grid"><article v-for="project in laserProjects" :key="project.video" class="laser-card"><video :autoplay="project.featured" muted loop playsinline controls preload="metadata" :poster="project.poster" :aria-label="project.title"><source :src="project.video" type="video/mp4"/></video><div><span>{{ project.category }}</span><h3>{{ project.title }}</h3><p>{{ project.description }}</p></div></article></div><div class="laser-showcase-actions"><button type="button" class="primary-button" @click="openService(services[4])">Explore cleaning & restoration <span>↗</span></button><button type="button" class="text-button" @click="chooseService(services[4]); scrollToIntake()">Show us your surface →</button></div></div></section>
 
       <section id="how-it-works" class="how-section"><div class="page-width"><p class="eyebrow">Simple by design</p><div class="how-grid"><h2>Clear scope before the work begins.</h2><div class="how-steps"><div><b>01</b><h3>Tell us the outcome</h3><p>Choose a service, describe the job, or send photos and short video.</p></div><div><b>02</b><h3>Confirm the real details</h3><p>We ask only what is needed to understand scope, access, timing, and materials.</p></div><div><b>03</b><h3>Set the next step</h3><p>Request a meet-and-greet or coordinated visit—then get a clear, confirmed plan.</p></div></div></div></div></section>
 

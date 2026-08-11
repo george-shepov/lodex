@@ -33,3 +33,25 @@ button,input,textarea,select { font:inherit; } button,a { cursor:pointer; } a { 
 .hero-service-lanes { display:flex; flex-wrap:wrap; gap:8px; margin-top:24px; }
 .hero-service-lanes button { border:1px solid #d8c8ad; border-radius:999px; background:#fffaf1; color:#7b531d; padding:9px 12px; font-size:11px; font-weight:800; }
 .hero-service-lanes button:hover { border-color:var(--gold); background:var(--gold); color:#18140d; }
+
+/* Authentic laser-restoration portfolio footage. */
+.laser-showcase { padding-block:88px; background:#0c100f; color:#fff; }
+.laser-showcase-service { border-top:1px solid rgba(210,162,84,.25); }
+.laser-showcase .section-heading>p { color:#aab3af; }
+.laser-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+.laser-card { overflow:hidden; border:1px solid rgba(255,255,255,.14); border-radius:14px; background:#151a18; box-shadow:0 18px 45px rgba(0,0,0,.18); }
+.laser-card video { display:block; width:100%; aspect-ratio:16/9; object-fit:cover; background:#050606; }
+.laser-card>div { padding:20px 22px 23px; }
+.laser-card span { color:var(--gold); font:10px 'DM Mono',monospace; text-transform:uppercase; letter-spacing:.08em; }
+.laser-card h3 { margin:8px 0; font-size:21px; letter-spacing:-.045em; }
+.laser-card p { margin:0; color:#aeb7b3; font-size:12px; line-height:1.65; }
+.laser-showcase-actions { display:flex; align-items:center; gap:20px; margin-top:30px; }
+.laser-showcase .text-button { color:#d6ddd9; }
+
+@media (max-width:700px) {
+  .laser-showcase { padding-block:62px; }
+  .laser-grid { grid-template-columns:1fr; gap:14px; }
+  .laser-card>div { padding:17px 18px 20px; }
+  .laser-showcase-actions { align-items:stretch; flex-direction:column; }
+  .laser-showcase-actions .text-button { min-height:44px; }
+}
