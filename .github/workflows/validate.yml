@@ -34,7 +34,7 @@ jobs:
         run: npm run build
 
   backend:
-    name: Backend import and syntax check
+    name: Backend tests and syntax check
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -58,3 +58,6 @@ jobs:
 
       - name: Import FastAPI app
         run: python -c "import main; assert main.app is not None"
+
+      - name: Run backend tests
+        run: pytest -q tests
