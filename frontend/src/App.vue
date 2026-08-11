@@ -35,6 +35,9 @@ const appointment = ref({ name: '', phone: '', email: '', address: '', preferred
 const notice = ref('')
 const paymentStatus = ref('not_started')
 const paymentError = ref('')
+const heroIntroOpen = ref(true)
+const heroIntroClosing = ref(false)
+let heroIntroCloseTimer = null
 
 const services = [
   {
@@ -366,9 +369,14 @@ function stopVirtualMedia() {
   virtualPeer = null; virtualSocket = null; remoteConnected.value = false; dualCamera.value = false
 }
 function closeVirtualMeet() { stopVirtualMedia(); virtualOpen.value = false; virtualStatus.value = ''; virtualError.value = '' }
+function finishHeroIntro() {
+  if (!heroIntroOpen.value || heroIntroClosing.value) return
+  heroIntroClosing.value = true
+  heroIntroCloseTimer = window.setTimeout(() => { heroIntroOpen.value = false }, 1200)
+}
 function onPopState() { currentPath.value = window.location.pathname }
 onMounted(() => { window.addEventListener('popstate', onPopState); handlePaymentReturn() })
-onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stopVirtualMedia() })
+onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stopVirtualMedia(); if (heroIntroCloseTimer) window.clearTimeout(heroIntroCloseTimer) })
 </script>
 
 <template>
@@ -379,6 +387,14 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stop
       <div class="nav-links"><a href="/#services" @click.prevent="goHome('#services')">Services</a><a href="/#inspiration" @click.prevent="goHome('#inspiration')">Inspiration</a><a href="/#how-it-works" @click.prevent="goHome('#how-it-works')">How it works</a><a href="/#project" @click.prevent="goHome('#project')">My project</a></div>
       <button type="button" class="nav-cta" @click="goHome(); nextTick(openSchedule)">Start a project <span>↗</span></button>
     </nav>
+
+    <section v-if="!activeService && heroIntroOpen" class="hero-intro" :class="{ 'is-collapsing': heroIntroClosing }" aria-label="LODEX introduction">
+      <div class="hero-intro-video-wrap"><video class="hero-intro-video" autoplay muted playsinline preload="auto" @ended="finishHeroIntro"><source src="/lodex-hero.mp4" type="video/mp4"/></video></div>
+      <div class="hero-intro-shade"></div>
+      <img class="hero-intro-logo" src="/lodex-logo-white.svg" alt="LODEX Home Services" />
+      <div class="hero-intro-caption"><span>LODEX Home Services</span><b>Thoughtful work, from the first look to the finished handoff.</b></div>
+      <button type="button" class="hero-intro-skip" @click="finishHeroIntro">Enter LODEX <span>↗</span></button>
+    </section>
 
     <template v-if="activeService">
       <section class="service-hero page-width">
