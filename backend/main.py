@@ -1,8 +1,10 @@
+import asyncio
 import json
 import hashlib
 import hmac
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import time
@@ -13,8 +15,9 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import httpx
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, RedirectResponse
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
@@ -35,6 +38,14 @@ try:
 except ValueError:
     STRIPE_DEPOSIT_AMOUNT_CENTS = 0
 PAYMENTS_FILE = UPLOAD_DIR.parent / "payments.jsonl"
+APPOINTMENTS_FILE = UPLOAD_DIR.parent / "appointment-requests.jsonl"
+SUPPORT_REQUESTS_FILE = UPLOAD_DIR.parent / "support-requests.jsonl"
+VISITOR_EVENTS_FILE = UPLOAD_DIR.parent / "visitor-events.jsonl"
+PROJECT_EVENTS_FILE = UPLOAD_DIR.parent / "project-events.jsonl"
+LODEX_ADMIN_TOKEN = os.getenv("LODEX_ADMIN_TOKEN", "").strip()
+ADMIN_SESSION_COOKIE = "lodex_admin_session"
+ADMIN_SESSION_TTL_SECONDS = 8 * 60 * 60
+ACTIVE_VISITOR_SECONDS = 75
 
 app = FastAPI(title="LODEX Intake API", version="0.1.0")
 app.add_middleware(
@@ -44,6 +55,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 virtual_rooms: dict[str, set[WebSocket]] = {}
+admin_event_sockets: set[WebSocket] = set()
+admin_sessions: dict[str, float] = {}
+active_visitors: dict[str, dict[str, Any]] = {}
 
 
 class ConversationTurn(BaseModel):
@@ -70,6 +84,7 @@ class AppointmentRequest(BaseModel):
     project_summary: str = Field(min_length=5, max_length=6000)
     service_category: str = Field(default="General inquiry", max_length=120)
     uploads: list[dict] = Field(default_factory=list)
+    conversation: list[ConversationTurn] = Field(default_factory=list, max_length=24)
     assumptions_confirmed: bool
     intake_ready: bool = False
 
@@ -85,6 +100,29 @@ class FeedbackRequest(BaseModel):
 class CheckoutRequest(BaseModel):
     project_code: str = Field(min_length=6, max_length=20)
     phone: str = Field(min_length=7, max_length=40)
+
+
+class AdminLoginRequest(BaseModel):
+    token: str = Field(min_length=16, max_length=500)
+
+
+class PresenceHeartbeat(BaseModel):
+    visitor_id: str = Field(pattern=r"^[a-zA-Z0-9_-]{12,100}$")
+    path: str = Field(default="/", max_length=500)
+    page_title: str = Field(default="", max_length=200)
+
+
+class SupportCallRequest(BaseModel):
+    visitor_id: str = Field(pattern=r"^[a-zA-Z0-9_-]{12,100}$")
+    name: str = Field(default="", max_length=120)
+    phone: str = Field(default="", max_length=40)
+    project_code: str = Field(default="", max_length=40)
+    message: str = Field(default="", max_length=1000)
+
+
+class ProjectStatusUpdate(BaseModel):
+    status: Literal["requested", "contacted", "scheduled", "in_progress", "completed", "cancelled"]
+    note: str = Field(default="", max_length=1000)
 
 
 def client() -> AsyncOpenAI:
@@ -173,6 +211,117 @@ def load_jsonl(path: Path) -> list[dict[str, Any]]:
 def append_jsonl(path: Path, record: dict[str, Any]) -> None:
     with path.open("a", encoding="utf-8") as output:
         output.write(json.dumps(record) + "\n")
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def iso_now() -> str:
+    return utc_now().isoformat()
+
+
+def purge_admin_sessions() -> None:
+    now = time.time()
+    for session_id, expires_at in list(admin_sessions.items()):
+        if expires_at <= now:
+            admin_sessions.pop(session_id, None)
+
+
+def create_admin_session() -> str:
+    purge_admin_sessions()
+    session_id = secrets.token_urlsafe(32)
+    admin_sessions[session_id] = time.time() + ADMIN_SESSION_TTL_SECONDS
+    return session_id
+
+
+def valid_admin_session(session_id: str | None) -> bool:
+    purge_admin_sessions()
+    if not session_id:
+        return False
+    expires_at = admin_sessions.get(session_id, 0)
+    if expires_at <= time.time():
+        admin_sessions.pop(session_id, None)
+        return False
+    admin_sessions[session_id] = time.time() + ADMIN_SESSION_TTL_SECONDS
+    return True
+
+
+def require_admin(request: Request) -> None:
+    if not LODEX_ADMIN_TOKEN:
+        raise HTTPException(503, "LODEX administrator access is not configured.")
+    if not valid_admin_session(request.cookies.get(ADMIN_SESSION_COOKIE)):
+        raise HTTPException(401, "Administrator authentication is required.")
+
+
+def admin_cookie_options() -> dict[str, Any]:
+    origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173").lower()
+    return {
+        "key": ADMIN_SESSION_COOKIE,
+        "max_age": ADMIN_SESSION_TTL_SECONDS,
+        "httponly": True,
+        "secure": origin.startswith("https://"),
+        "samesite": "lax",
+        "path": "/",
+    }
+
+
+def verify_admin_token(token: str) -> None:
+    if not LODEX_ADMIN_TOKEN:
+        raise HTTPException(503, "LODEX administrator access is not configured.")
+    if not secrets.compare_digest(token, LODEX_ADMIN_TOKEN):
+        raise HTTPException(401, "The administrator token is not valid.")
+
+
+def project_event_statuses() -> dict[str, dict[str, Any]]:
+    statuses: dict[str, dict[str, Any]] = {}
+    for event in load_jsonl(PROJECT_EVENTS_FILE):
+        code = str(event.get("project_code", "")).upper()
+        if code:
+            statuses[code] = event
+    return statuses
+
+
+def recent_active_visitors() -> list[dict[str, Any]]:
+    cutoff = time.time() - ACTIVE_VISITOR_SECONDS
+    for visitor_id, visitor in list(active_visitors.items()):
+        if float(visitor.get("last_seen_epoch", 0)) < cutoff:
+            active_visitors.pop(visitor_id, None)
+    return sorted(active_visitors.values(), key=lambda item: item["last_seen_epoch"], reverse=True)
+
+
+async def broadcast_admin_event(event_type: str, payload: dict[str, Any]) -> None:
+    message = {"type": event_type, "at": iso_now(), "payload": payload}
+    for socket in list(admin_event_sockets):
+        try:
+            await socket.send_json(message)
+        except Exception:
+            admin_event_sockets.discard(socket)
+
+
+def public_project_record(record: dict[str, Any]) -> dict[str, Any]:
+    code = str(record.get("project_code", "")).upper()
+    status_event = project_event_statuses().get(code, {})
+    return {
+        "id": record.get("id"),
+        "project_code": code,
+        "name": record.get("name", ""),
+        "phone": record.get("phone", ""),
+        "email": record.get("email", ""),
+        "address": record.get("address", ""),
+        "preferred_date": record.get("preferred_date", ""),
+        "preferred_time": record.get("preferred_time", ""),
+        "project_summary": record.get("project_summary", ""),
+        "service_category": record.get("service_category", "General inquiry"),
+        "uploads": record.get("uploads", []),
+        "conversation": record.get("conversation", []),
+        "assumptions_confirmed": bool(record.get("assumptions_confirmed")),
+        "intake_ready": bool(record.get("intake_ready")),
+        "created_at": record.get("created_at"),
+        "status": status_event.get("status", record.get("status", "requested")),
+        "status_note": status_event.get("note", ""),
+        "payment_status": (latest_payment(code) or {}).get("status", "not_started"),
+    }
 
 
 def normalize_phone(value: str) -> str:
@@ -717,11 +866,164 @@ async def health():
     return {
         "ok": True,
         "ai_configured": bool(os.getenv("OPENAI_API_KEY")),
+        "admin_configured": bool(LODEX_ADMIN_TOKEN),
         "model_router": {
             tier: public_route(model_route(tier))
             for tier in ("luna", "terra", "sol")
         },
     }
+
+
+@app.post("/api/admin/login")
+async def admin_login(request: AdminLoginRequest):
+    verify_admin_token(request.token)
+    session_id = create_admin_session()
+    response = JSONResponse({"authenticated": True, "expires_in": ADMIN_SESSION_TTL_SECONDS})
+    response.set_cookie(value=session_id, **admin_cookie_options())
+    return response
+
+
+@app.post("/api/admin/bootstrap", include_in_schema=False)
+async def admin_bootstrap(token: Annotated[str, Form()]):
+    """Exchange the Operations Center token for a LODEX-only session cookie.
+
+    The token travels in a TLS-protected POST body, never in a URL, query string,
+    fragment, referrer, or persisted browser storage on the LODEX origin.
+    """
+    verify_admin_token(token)
+    session_id = create_admin_session()
+    response = RedirectResponse(url="/admin", status_code=303)
+    response.set_cookie(value=session_id, **admin_cookie_options())
+    return response
+
+
+@app.get("/api/admin/session", dependencies=[Depends(require_admin)])
+async def admin_session():
+    return {"authenticated": True}
+
+
+@app.delete("/api/admin/session", dependencies=[Depends(require_admin)])
+async def admin_logout(request: Request):
+    session_id = request.cookies.get(ADMIN_SESSION_COOKIE)
+    if session_id:
+        admin_sessions.pop(session_id, None)
+    response = JSONResponse({"authenticated": False})
+    response.delete_cookie(ADMIN_SESSION_COOKIE, path="/")
+    return response
+
+
+@app.post("/api/presence/heartbeat")
+async def presence_heartbeat(request: PresenceHeartbeat):
+    now = time.time()
+    existing = active_visitors.get(request.visitor_id)
+    is_new_visit = not existing or float(existing.get("last_seen_epoch", 0)) < now - ACTIVE_VISITOR_SECONDS
+    first_seen = iso_now() if is_new_visit else str(existing.get("first_seen"))
+    visitor = {
+        "visitor_id": request.visitor_id,
+        "path": request.path,
+        "page_title": request.page_title,
+        "first_seen": first_seen,
+        "last_seen": iso_now(),
+        "last_seen_epoch": now,
+    }
+    active_visitors[request.visitor_id] = visitor
+    if is_new_visit:
+        append_jsonl(VISITOR_EVENTS_FILE, {
+            "visitor_id": request.visitor_id,
+            "path": request.path,
+            "page_title": request.page_title,
+            "created_at": visitor["first_seen"],
+        })
+        await broadcast_admin_event("visitor.entered", {
+            "visitor_id": request.visitor_id,
+            "path": request.path,
+            "page_title": request.page_title,
+        })
+    return {"ok": True, "active": len(recent_active_visitors())}
+
+
+@app.post("/api/support/call")
+async def request_support_call(request: SupportCallRequest):
+    project_code = request.project_code.strip().upper()
+    room_code = project_code or f"LDX-LIVE-{uuid.uuid4().hex[:6].upper()}"
+    record = request.model_dump() | {
+        "id": uuid.uuid4().hex,
+        "room_code": room_code,
+        "status": "waiting",
+        "created_at": iso_now(),
+    }
+    append_jsonl(SUPPORT_REQUESTS_FILE, record)
+    await broadcast_admin_event("support.requested", {
+        "id": record["id"],
+        "room_code": room_code,
+        "name": record["name"],
+        "phone": record["phone"],
+        "message": record["message"],
+    })
+    return {
+        "accepted": True,
+        "room_code": room_code,
+        "message": "LODEX has been alerted. Keep this page open and join the video room when you are ready.",
+    }
+
+
+@app.get("/api/admin/overview", dependencies=[Depends(require_admin)])
+async def admin_overview():
+    requests = [public_project_record(record) for record in reversed(load_jsonl(UPLOAD_DIR.parent / "appointment-requests.jsonl"))]
+    support_requests = list(reversed(load_jsonl(SUPPORT_REQUESTS_FILE)))
+    today = utc_now().date().isoformat()
+    visitors_today = {
+        str(record.get("visitor_id", ""))
+        for record in load_jsonl(VISITOR_EVENTS_FILE)
+        if str(record.get("created_at", "")).startswith(today)
+    }
+    active = recent_active_visitors()
+    return {
+        "active_visitors": [
+            {key: value for key, value in visitor.items() if key != "last_seen_epoch"}
+            for visitor in active
+        ],
+        "active_count": len(active),
+        "visitors_today": len(visitors_today),
+        "project_requests": requests[:100],
+        "support_requests": support_requests[:100],
+        "counts": {
+            "projects": len(requests),
+            "waiting_support": sum(item.get("status") == "waiting" for item in support_requests),
+            "paid": sum(item.get("payment_status") == "paid" for item in requests),
+        },
+    }
+
+
+@app.patch("/api/admin/projects/{project_code}", dependencies=[Depends(require_admin)])
+async def update_project_status(project_code: str, request: ProjectStatusUpdate):
+    requested_code = project_code.strip().upper()
+    if not any(str(item.get("project_code", "")).upper() == requested_code for item in load_jsonl(UPLOAD_DIR.parent / "appointment-requests.jsonl")):
+        raise HTTPException(404, "Project request not found.")
+    event = request.model_dump() | {"project_code": requested_code, "created_at": iso_now()}
+    append_jsonl(PROJECT_EVENTS_FILE, event)
+    await broadcast_admin_event("project.updated", event)
+    return event
+
+
+@app.websocket("/api/admin/events")
+async def admin_events(websocket: WebSocket):
+    if not LODEX_ADMIN_TOKEN or not valid_admin_session(websocket.cookies.get(ADMIN_SESSION_COOKIE)):
+        await websocket.close(code=1008)
+        return
+    await websocket.accept()
+    admin_event_sockets.add(websocket)
+    await websocket.send_json({"type": "admin.connected", "at": iso_now(), "payload": {}})
+    try:
+        while True:
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=30)
+            except asyncio.TimeoutError:
+                await websocket.send_json({"type": "admin.ping", "at": iso_now(), "payload": {}})
+    except WebSocketDisconnect:
+        pass
+    finally:
+        admin_event_sockets.discard(websocket)
 
 
 @app.websocket("/api/virtual/rooms/{room_id}")
@@ -838,7 +1140,7 @@ async def lookup_project(code: str, phone: str):
                     })
             return {
                 "project_code": record["project_code"],
-                "status": "Meet-and-greet requested",
+                "status": project_event_statuses().get(requested_code, {}).get("status", "Meet-and-greet requested"),
                 "title": title,
                 "service_category": record.get("service_category", "General inquiry"),
                 "next_step": "LODEX will confirm the requested visit window and review any remaining details with you.",
@@ -846,6 +1148,9 @@ async def lookup_project(code: str, phone: str):
                 "scope_confirmed": bool(record.get("assumptions_confirmed")),
                 "requested_date": record.get("preferred_date"),
                 "requested_time": record.get("preferred_time"),
+                "address": record.get("address"),
+                "project_summary": record.get("project_summary", ""),
+                "uploads": record.get("uploads", []),
                 "payment_status": (latest_payment(record["project_code"]) or {}).get("status", "not_started"),
                 "past_projects": past_projects[:8],
             }
@@ -863,12 +1168,30 @@ async def request_appointment(request: AppointmentRequest):
         "created_at": datetime.now(timezone.utc).isoformat(),
         "note": "Requested time is not a final booking until LODEX confirms it.",
     }
-    with (UPLOAD_DIR.parent / "appointment-requests.jsonl").open("a", encoding="utf-8") as f:
-        f.write(json.dumps(record) + "\n")
+    append_jsonl(UPLOAD_DIR.parent / "appointment-requests.jsonl", record)
+    await broadcast_admin_event("project.created", {
+        "project_code": record["project_code"],
+        "name": record["name"],
+        "phone": record["phone"],
+        "service_category": record["service_category"],
+        "preferred_date": record["preferred_date"],
+        "preferred_time": record["preferred_time"],
+    })
     return {
         "id": record["id"],
         "project_code": record["project_code"],
         "message": "Meet-and-greet requested. We will confirm the time and final scope before any final price is set.",
+        "confirmation": {
+            "name": record["name"],
+            "phone": record["phone"],
+            "email": record.get("email") or "",
+            "address": record["address"],
+            "preferred_date": record["preferred_date"],
+            "preferred_time": record["preferred_time"],
+            "project_summary": record["project_summary"],
+            "service_category": record["service_category"],
+            "uploads": record["uploads"],
+        },
     }
 
 

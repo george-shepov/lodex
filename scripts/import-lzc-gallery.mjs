@@ -31,8 +31,9 @@ const categoryRules = [
 ]
 
 const excluded = /Create_a_clean_modern_flat-icon|think_of_a_circle|FABRICATION_--profile/i
-// Hand-curated from the deduplicated archive. The order is intentional: the first
-// 12 are the strongest, most varied concepts and become the homepage preview.
+// Hand-curated from the deduplicated archive. The order is intentional: these
+// remain first so the homepage preview and initial gallery view lead with the
+// strongest, most varied concepts. Every other unique image follows afterward.
 const curatedOriginalIndices = [
   42, 46, 97, 124, 19, 30, 1, 110, 99, 22, 70, 126,
   2, 38, 43, 85, 47, 48, 98, 100, 125, 149, 151, 18,
@@ -59,14 +60,22 @@ try {
 
   mkdirSync(stagedOutputDir, { recursive: true })
 
-  const curatedFiles = curatedOriginalIndices.map(originalIndex => {
+  const missingCuratedIndex = curatedOriginalIndices.find(originalIndex => !uniqueFiles[originalIndex - 1])
+  if (missingCuratedIndex) throw new Error(`Curated image ${missingCuratedIndex} is missing from the deduplicated archive`)
+
+  const curatedIndexSet = new Set(curatedOriginalIndices)
+  const orderedOriginalIndices = [
+    ...curatedOriginalIndices,
+    ...uniqueFiles.map((_, index) => index + 1).filter(originalIndex => !curatedIndexSet.has(originalIndex)),
+  ]
+
+  const orderedFiles = orderedOriginalIndices.map(originalIndex => {
     const file = uniqueFiles[originalIndex - 1]
-    if (!file) throw new Error(`Curated image ${originalIndex} is missing from the deduplicated archive`)
     return { file, originalIndex }
   })
 
   const categoryCounts = new Map()
-  const gallery = curatedFiles.map(({ file, originalIndex }) => {
+  const gallery = orderedFiles.map(({ file, originalIndex }) => {
     const [category, , detail] = categoryRules.find(([, matcher]) => matcher.test(file)) || ['Materials & surfaces', null, 'Material, finish, and surface inspiration']
     const categoryIndex = (categoryCounts.get(category) || 0) + 1
     categoryCounts.set(category, categoryIndex)
@@ -93,7 +102,7 @@ try {
   rmSync(outputDir, { recursive: true, force: true })
   renameSync(stagedOutputDir, outputDir)
   writeFileSync(manifestPath, `${header}export const lzGalleryProjects = ${JSON.stringify(gallery, null, 2)}\n`)
-  console.log(`Imported ${gallery.length} gallery images into ${outputDir}`)
+  console.log(`Imported all ${gallery.length} unique gallery images into ${outputDir}`)
 } finally {
   rmSync(workDir, { recursive: true, force: true })
 }

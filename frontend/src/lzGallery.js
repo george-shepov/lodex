@@ -287,5 +287,949 @@ export const lzGalleryProjects = [
     "detail": "Cabinet profiles, wood tones, and built-in details",
     "category": "Cabinetry & wood",
     "alt": "AI-generated LZ Custom cabinetry & wood inspiration concept 2"
+  },
+  {
+    "id": "lz-003",
+    "src": "/inspiration/lz-archive/lz-003.webp",
+    "title": "Kitchens inspiration 08",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 8"
+  },
+  {
+    "id": "lz-006",
+    "src": "/inspiration/lz-archive/lz-006.webp",
+    "title": "Materials & surfaces inspiration 05",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 5"
+  },
+  {
+    "id": "lz-009",
+    "src": "/inspiration/lz-archive/lz-009.webp",
+    "title": "Cabinetry & wood inspiration 03",
+    "detail": "Cabinet profiles, wood tones, and built-in details",
+    "category": "Cabinetry & wood",
+    "alt": "AI-generated LZ Custom cabinetry & wood inspiration concept 3"
+  },
+  {
+    "id": "lz-010",
+    "src": "/inspiration/lz-archive/lz-010.webp",
+    "title": "Cabinetry & wood inspiration 04",
+    "detail": "Cabinet profiles, wood tones, and built-in details",
+    "category": "Cabinetry & wood",
+    "alt": "AI-generated LZ Custom cabinetry & wood inspiration concept 4"
+  },
+  {
+    "id": "lz-011",
+    "src": "/inspiration/lz-archive/lz-011.webp",
+    "title": "Cabinetry & wood inspiration 05",
+    "detail": "Cabinet profiles, wood tones, and built-in details",
+    "category": "Cabinetry & wood",
+    "alt": "AI-generated LZ Custom cabinetry & wood inspiration concept 5"
+  },
+  {
+    "id": "lz-012",
+    "src": "/inspiration/lz-archive/lz-012.webp",
+    "title": "Cabinetry & wood inspiration 06",
+    "detail": "Cabinet profiles, wood tones, and built-in details",
+    "category": "Cabinetry & wood",
+    "alt": "AI-generated LZ Custom cabinetry & wood inspiration concept 6"
+  },
+  {
+    "id": "lz-013",
+    "src": "/inspiration/lz-archive/lz-013.webp",
+    "title": "Cabinetry & wood inspiration 07",
+    "detail": "Cabinet profiles, wood tones, and built-in details",
+    "category": "Cabinetry & wood",
+    "alt": "AI-generated LZ Custom cabinetry & wood inspiration concept 7"
+  },
+  {
+    "id": "lz-014",
+    "src": "/inspiration/lz-archive/lz-014.webp",
+    "title": "Cabinetry & wood inspiration 08",
+    "detail": "Cabinet profiles, wood tones, and built-in details",
+    "category": "Cabinetry & wood",
+    "alt": "AI-generated LZ Custom cabinetry & wood inspiration concept 8"
+  },
+  {
+    "id": "lz-015",
+    "src": "/inspiration/lz-archive/lz-015.webp",
+    "title": "Cabinetry & wood inspiration 09",
+    "detail": "Cabinet profiles, wood tones, and built-in details",
+    "category": "Cabinetry & wood",
+    "alt": "AI-generated LZ Custom cabinetry & wood inspiration concept 9"
+  },
+  {
+    "id": "lz-016",
+    "src": "/inspiration/lz-archive/lz-016.webp",
+    "title": "Cabinetry & wood inspiration 10",
+    "detail": "Cabinet profiles, wood tones, and built-in details",
+    "category": "Cabinetry & wood",
+    "alt": "AI-generated LZ Custom cabinetry & wood inspiration concept 10"
+  },
+  {
+    "id": "lz-017",
+    "src": "/inspiration/lz-archive/lz-017.webp",
+    "title": "Cabinetry & wood inspiration 11",
+    "detail": "Cabinet profiles, wood tones, and built-in details",
+    "category": "Cabinetry & wood",
+    "alt": "AI-generated LZ Custom cabinetry & wood inspiration concept 11"
+  },
+  {
+    "id": "lz-021",
+    "src": "/inspiration/lz-archive/lz-021.webp",
+    "title": "Tile & patterns inspiration 05",
+    "detail": "Tile layouts, patterns, spacing, and surface ideas",
+    "category": "Tile & patterns",
+    "alt": "AI-generated LZ Custom tile & patterns inspiration concept 5"
+  },
+  {
+    "id": "lz-023",
+    "src": "/inspiration/lz-archive/lz-023.webp",
+    "title": "Fabrication inspiration 05",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 5"
+  },
+  {
+    "id": "lz-024",
+    "src": "/inspiration/lz-archive/lz-024.webp",
+    "title": "Fabrication inspiration 06",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 6"
+  },
+  {
+    "id": "lz-026",
+    "src": "/inspiration/lz-archive/lz-026.webp",
+    "title": "Commercial inspiration 05",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 5"
+  },
+  {
+    "id": "lz-027",
+    "src": "/inspiration/lz-archive/lz-027.webp",
+    "title": "Commercial inspiration 06",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 6"
+  },
+  {
+    "id": "lz-028",
+    "src": "/inspiration/lz-archive/lz-028.webp",
+    "title": "Commercial inspiration 07",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 7"
+  },
+  {
+    "id": "lz-029",
+    "src": "/inspiration/lz-archive/lz-029.webp",
+    "title": "Commercial inspiration 08",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 8"
+  },
+  {
+    "id": "lz-031",
+    "src": "/inspiration/lz-archive/lz-031.webp",
+    "title": "Fabrication inspiration 07",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 7"
+  },
+  {
+    "id": "lz-032",
+    "src": "/inspiration/lz-archive/lz-032.webp",
+    "title": "Fabrication inspiration 08",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 8"
+  },
+  {
+    "id": "lz-033",
+    "src": "/inspiration/lz-archive/lz-033.webp",
+    "title": "Fabrication inspiration 09",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 9"
+  },
+  {
+    "id": "lz-034",
+    "src": "/inspiration/lz-archive/lz-034.webp",
+    "title": "Fabrication inspiration 10",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 10"
+  },
+  {
+    "id": "lz-036",
+    "src": "/inspiration/lz-archive/lz-036.webp",
+    "title": "Tile & patterns inspiration 06",
+    "detail": "Tile layouts, patterns, spacing, and surface ideas",
+    "category": "Tile & patterns",
+    "alt": "AI-generated LZ Custom tile & patterns inspiration concept 6"
+  },
+  {
+    "id": "lz-037",
+    "src": "/inspiration/lz-archive/lz-037.webp",
+    "title": "Tile & patterns inspiration 07",
+    "detail": "Tile layouts, patterns, spacing, and surface ideas",
+    "category": "Tile & patterns",
+    "alt": "AI-generated LZ Custom tile & patterns inspiration concept 7"
+  },
+  {
+    "id": "lz-039",
+    "src": "/inspiration/lz-archive/lz-039.webp",
+    "title": "Kitchens inspiration 09",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 9"
+  },
+  {
+    "id": "lz-040",
+    "src": "/inspiration/lz-archive/lz-040.webp",
+    "title": "Kitchens inspiration 10",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 10"
+  },
+  {
+    "id": "lz-041",
+    "src": "/inspiration/lz-archive/lz-041.webp",
+    "title": "Kitchens inspiration 11",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 11"
+  },
+  {
+    "id": "lz-044",
+    "src": "/inspiration/lz-archive/lz-044.webp",
+    "title": "Kitchens inspiration 12",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 12"
+  },
+  {
+    "id": "lz-045",
+    "src": "/inspiration/lz-archive/lz-045.webp",
+    "title": "Kitchens inspiration 13",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 13"
+  },
+  {
+    "id": "lz-049",
+    "src": "/inspiration/lz-archive/lz-049.webp",
+    "title": "Bathrooms inspiration 05",
+    "detail": "Bathroom layouts, vanities, tile, and stone finishes",
+    "category": "Bathrooms",
+    "alt": "AI-generated LZ Custom bathrooms inspiration concept 5"
+  },
+  {
+    "id": "lz-050",
+    "src": "/inspiration/lz-archive/lz-050.webp",
+    "title": "Tile & patterns inspiration 08",
+    "detail": "Tile layouts, patterns, spacing, and surface ideas",
+    "category": "Tile & patterns",
+    "alt": "AI-generated LZ Custom tile & patterns inspiration concept 8"
+  },
+  {
+    "id": "lz-051",
+    "src": "/inspiration/lz-archive/lz-051.webp",
+    "title": "Tile & patterns inspiration 09",
+    "detail": "Tile layouts, patterns, spacing, and surface ideas",
+    "category": "Tile & patterns",
+    "alt": "AI-generated LZ Custom tile & patterns inspiration concept 9"
+  },
+  {
+    "id": "lz-052",
+    "src": "/inspiration/lz-archive/lz-052.webp",
+    "title": "Materials & surfaces inspiration 06",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 6"
+  },
+  {
+    "id": "lz-053",
+    "src": "/inspiration/lz-archive/lz-053.webp",
+    "title": "Materials & surfaces inspiration 07",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 7"
+  },
+  {
+    "id": "lz-054",
+    "src": "/inspiration/lz-archive/lz-054.webp",
+    "title": "Materials & surfaces inspiration 08",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 8"
+  },
+  {
+    "id": "lz-055",
+    "src": "/inspiration/lz-archive/lz-055.webp",
+    "title": "Materials & surfaces inspiration 09",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 9"
+  },
+  {
+    "id": "lz-056",
+    "src": "/inspiration/lz-archive/lz-056.webp",
+    "title": "Materials & surfaces inspiration 10",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 10"
+  },
+  {
+    "id": "lz-057",
+    "src": "/inspiration/lz-archive/lz-057.webp",
+    "title": "Materials & surfaces inspiration 11",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 11"
+  },
+  {
+    "id": "lz-058",
+    "src": "/inspiration/lz-archive/lz-058.webp",
+    "title": "Materials & surfaces inspiration 12",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 12"
+  },
+  {
+    "id": "lz-059",
+    "src": "/inspiration/lz-archive/lz-059.webp",
+    "title": "Materials & surfaces inspiration 13",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 13"
+  },
+  {
+    "id": "lz-060",
+    "src": "/inspiration/lz-archive/lz-060.webp",
+    "title": "Materials & surfaces inspiration 14",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 14"
+  },
+  {
+    "id": "lz-061",
+    "src": "/inspiration/lz-archive/lz-061.webp",
+    "title": "Materials & surfaces inspiration 15",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 15"
+  },
+  {
+    "id": "lz-062",
+    "src": "/inspiration/lz-archive/lz-062.webp",
+    "title": "Fabrication inspiration 11",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 11"
+  },
+  {
+    "id": "lz-063",
+    "src": "/inspiration/lz-archive/lz-063.webp",
+    "title": "Fabrication inspiration 12",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 12"
+  },
+  {
+    "id": "lz-064",
+    "src": "/inspiration/lz-archive/lz-064.webp",
+    "title": "Fabrication inspiration 13",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 13"
+  },
+  {
+    "id": "lz-065",
+    "src": "/inspiration/lz-archive/lz-065.webp",
+    "title": "Fabrication inspiration 14",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 14"
+  },
+  {
+    "id": "lz-066",
+    "src": "/inspiration/lz-archive/lz-066.webp",
+    "title": "Fabrication inspiration 15",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 15"
+  },
+  {
+    "id": "lz-067",
+    "src": "/inspiration/lz-archive/lz-067.webp",
+    "title": "Fabrication inspiration 16",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 16"
+  },
+  {
+    "id": "lz-068",
+    "src": "/inspiration/lz-archive/lz-068.webp",
+    "title": "Fabrication inspiration 17",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 17"
+  },
+  {
+    "id": "lz-069",
+    "src": "/inspiration/lz-archive/lz-069.webp",
+    "title": "Fabrication inspiration 18",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 18"
+  },
+  {
+    "id": "lz-071",
+    "src": "/inspiration/lz-archive/lz-071.webp",
+    "title": "Kitchens inspiration 14",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 14"
+  },
+  {
+    "id": "lz-072",
+    "src": "/inspiration/lz-archive/lz-072.webp",
+    "title": "Kitchens inspiration 15",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 15"
+  },
+  {
+    "id": "lz-073",
+    "src": "/inspiration/lz-archive/lz-073.webp",
+    "title": "Kitchens inspiration 16",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 16"
+  },
+  {
+    "id": "lz-074",
+    "src": "/inspiration/lz-archive/lz-074.webp",
+    "title": "Commercial inspiration 09",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 9"
+  },
+  {
+    "id": "lz-075",
+    "src": "/inspiration/lz-archive/lz-075.webp",
+    "title": "Commercial inspiration 10",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 10"
+  },
+  {
+    "id": "lz-076",
+    "src": "/inspiration/lz-archive/lz-076.webp",
+    "title": "Commercial inspiration 11",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 11"
+  },
+  {
+    "id": "lz-077",
+    "src": "/inspiration/lz-archive/lz-077.webp",
+    "title": "Commercial inspiration 12",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 12"
+  },
+  {
+    "id": "lz-078",
+    "src": "/inspiration/lz-archive/lz-078.webp",
+    "title": "Commercial inspiration 13",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 13"
+  },
+  {
+    "id": "lz-079",
+    "src": "/inspiration/lz-archive/lz-079.webp",
+    "title": "Commercial inspiration 14",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 14"
+  },
+  {
+    "id": "lz-080",
+    "src": "/inspiration/lz-archive/lz-080.webp",
+    "title": "Commercial inspiration 15",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 15"
+  },
+  {
+    "id": "lz-081",
+    "src": "/inspiration/lz-archive/lz-081.webp",
+    "title": "Commercial inspiration 16",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 16"
+  },
+  {
+    "id": "lz-082",
+    "src": "/inspiration/lz-archive/lz-082.webp",
+    "title": "Tile & patterns inspiration 10",
+    "detail": "Tile layouts, patterns, spacing, and surface ideas",
+    "category": "Tile & patterns",
+    "alt": "AI-generated LZ Custom tile & patterns inspiration concept 10"
+  },
+  {
+    "id": "lz-084",
+    "src": "/inspiration/lz-archive/lz-084.webp",
+    "title": "Tile & patterns inspiration 11",
+    "detail": "Tile layouts, patterns, spacing, and surface ideas",
+    "category": "Tile & patterns",
+    "alt": "AI-generated LZ Custom tile & patterns inspiration concept 11"
+  },
+  {
+    "id": "lz-086",
+    "src": "/inspiration/lz-archive/lz-086.webp",
+    "title": "Kitchens inspiration 17",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 17"
+  },
+  {
+    "id": "lz-087",
+    "src": "/inspiration/lz-archive/lz-087.webp",
+    "title": "Kitchens inspiration 18",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 18"
+  },
+  {
+    "id": "lz-088",
+    "src": "/inspiration/lz-archive/lz-088.webp",
+    "title": "Kitchens inspiration 19",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 19"
+  },
+  {
+    "id": "lz-089",
+    "src": "/inspiration/lz-archive/lz-089.webp",
+    "title": "Kitchens inspiration 20",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 20"
+  },
+  {
+    "id": "lz-090",
+    "src": "/inspiration/lz-archive/lz-090.webp",
+    "title": "Kitchens inspiration 21",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 21"
+  },
+  {
+    "id": "lz-091",
+    "src": "/inspiration/lz-archive/lz-091.webp",
+    "title": "Kitchens inspiration 22",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 22"
+  },
+  {
+    "id": "lz-092",
+    "src": "/inspiration/lz-archive/lz-092.webp",
+    "title": "Kitchens inspiration 23",
+    "detail": "Kitchen layouts, cabinetry, and finish combinations",
+    "category": "Kitchens",
+    "alt": "AI-generated LZ Custom kitchens inspiration concept 23"
+  },
+  {
+    "id": "lz-093",
+    "src": "/inspiration/lz-archive/lz-093.webp",
+    "title": "Materials & surfaces inspiration 16",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 16"
+  },
+  {
+    "id": "lz-095",
+    "src": "/inspiration/lz-archive/lz-095.webp",
+    "title": "Materials & surfaces inspiration 17",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 17"
+  },
+  {
+    "id": "lz-096",
+    "src": "/inspiration/lz-archive/lz-096.webp",
+    "title": "Materials & surfaces inspiration 18",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 18"
+  },
+  {
+    "id": "lz-101",
+    "src": "/inspiration/lz-archive/lz-101.webp",
+    "title": "Materials & surfaces inspiration 19",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 19"
+  },
+  {
+    "id": "lz-102",
+    "src": "/inspiration/lz-archive/lz-102.webp",
+    "title": "Materials & surfaces inspiration 20",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 20"
+  },
+  {
+    "id": "lz-103",
+    "src": "/inspiration/lz-archive/lz-103.webp",
+    "title": "Materials & surfaces inspiration 21",
+    "detail": "Material, finish, and surface inspiration",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 21"
+  },
+  {
+    "id": "lz-104",
+    "src": "/inspiration/lz-archive/lz-104.webp",
+    "title": "Materials & surfaces inspiration 22",
+    "detail": "Material, finish, and surface inspiration",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 22"
+  },
+  {
+    "id": "lz-105",
+    "src": "/inspiration/lz-archive/lz-105.webp",
+    "title": "Materials & surfaces inspiration 23",
+    "detail": "Material, finish, and surface inspiration",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 23"
+  },
+  {
+    "id": "lz-106",
+    "src": "/inspiration/lz-archive/lz-106.webp",
+    "title": "Materials & surfaces inspiration 24",
+    "detail": "Material, finish, and surface inspiration",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 24"
+  },
+  {
+    "id": "lz-107",
+    "src": "/inspiration/lz-archive/lz-107.webp",
+    "title": "Materials & surfaces inspiration 25",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 25"
+  },
+  {
+    "id": "lz-108",
+    "src": "/inspiration/lz-archive/lz-108.webp",
+    "title": "Materials & surfaces inspiration 26",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 26"
+  },
+  {
+    "id": "lz-109",
+    "src": "/inspiration/lz-archive/lz-109.webp",
+    "title": "Materials & surfaces inspiration 27",
+    "detail": "Stone, laminate, wood, and countertop material ideas",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 27"
+  },
+  {
+    "id": "lz-111",
+    "src": "/inspiration/lz-archive/lz-111.webp",
+    "title": "Bathrooms inspiration 06",
+    "detail": "Bathroom layouts, vanities, tile, and stone finishes",
+    "category": "Bathrooms",
+    "alt": "AI-generated LZ Custom bathrooms inspiration concept 6"
+  },
+  {
+    "id": "lz-112",
+    "src": "/inspiration/lz-archive/lz-112.webp",
+    "title": "Bathrooms inspiration 07",
+    "detail": "Bathroom layouts, vanities, tile, and stone finishes",
+    "category": "Bathrooms",
+    "alt": "AI-generated LZ Custom bathrooms inspiration concept 7"
+  },
+  {
+    "id": "lz-113",
+    "src": "/inspiration/lz-archive/lz-113.webp",
+    "title": "Fabrication inspiration 19",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 19"
+  },
+  {
+    "id": "lz-114",
+    "src": "/inspiration/lz-archive/lz-114.webp",
+    "title": "Fabrication inspiration 20",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 20"
+  },
+  {
+    "id": "lz-116",
+    "src": "/inspiration/lz-archive/lz-116.webp",
+    "title": "Fabrication inspiration 21",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 21"
+  },
+  {
+    "id": "lz-117",
+    "src": "/inspiration/lz-archive/lz-117.webp",
+    "title": "Commercial inspiration 17",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 17"
+  },
+  {
+    "id": "lz-118",
+    "src": "/inspiration/lz-archive/lz-118.webp",
+    "title": "Commercial inspiration 18",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 18"
+  },
+  {
+    "id": "lz-119",
+    "src": "/inspiration/lz-archive/lz-119.webp",
+    "title": "Commercial inspiration 19",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 19"
+  },
+  {
+    "id": "lz-120",
+    "src": "/inspiration/lz-archive/lz-120.webp",
+    "title": "Commercial inspiration 20",
+    "detail": "Commercial interiors and durable workplace finishes",
+    "category": "Commercial",
+    "alt": "AI-generated LZ Custom commercial inspiration concept 20"
+  },
+  {
+    "id": "lz-121",
+    "src": "/inspiration/lz-archive/lz-121.webp",
+    "title": "Fabrication inspiration 22",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 22"
+  },
+  {
+    "id": "lz-122",
+    "src": "/inspiration/lz-archive/lz-122.webp",
+    "title": "Fabrication inspiration 23",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 23"
+  },
+  {
+    "id": "lz-123",
+    "src": "/inspiration/lz-archive/lz-123.webp",
+    "title": "Fabrication inspiration 24",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 24"
+  },
+  {
+    "id": "lz-128",
+    "src": "/inspiration/lz-archive/lz-128.webp",
+    "title": "Fabrication inspiration 25",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 25"
+  },
+  {
+    "id": "lz-129",
+    "src": "/inspiration/lz-archive/lz-129.webp",
+    "title": "Fabrication inspiration 26",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 26"
+  },
+  {
+    "id": "lz-130",
+    "src": "/inspiration/lz-archive/lz-130.webp",
+    "title": "Fabrication inspiration 27",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 27"
+  },
+  {
+    "id": "lz-131",
+    "src": "/inspiration/lz-archive/lz-131.webp",
+    "title": "Fabrication inspiration 28",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 28"
+  },
+  {
+    "id": "lz-132",
+    "src": "/inspiration/lz-archive/lz-132.webp",
+    "title": "Fabrication inspiration 29",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 29"
+  },
+  {
+    "id": "lz-133",
+    "src": "/inspiration/lz-archive/lz-133.webp",
+    "title": "Fabrication inspiration 30",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 30"
+  },
+  {
+    "id": "lz-134",
+    "src": "/inspiration/lz-archive/lz-134.webp",
+    "title": "Fabrication inspiration 31",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 31"
+  },
+  {
+    "id": "lz-135",
+    "src": "/inspiration/lz-archive/lz-135.webp",
+    "title": "Painting inspiration 04",
+    "detail": "Interior coating and commercial painting ideas",
+    "category": "Painting",
+    "alt": "AI-generated LZ Custom painting inspiration concept 4"
+  },
+  {
+    "id": "lz-137",
+    "src": "/inspiration/lz-archive/lz-137.webp",
+    "title": "Painting inspiration 05",
+    "detail": "Interior coating and commercial painting ideas",
+    "category": "Painting",
+    "alt": "AI-generated LZ Custom painting inspiration concept 5"
+  },
+  {
+    "id": "lz-138",
+    "src": "/inspiration/lz-archive/lz-138.webp",
+    "title": "Painting inspiration 06",
+    "detail": "Interior coating and commercial painting ideas",
+    "category": "Painting",
+    "alt": "AI-generated LZ Custom painting inspiration concept 6"
+  },
+  {
+    "id": "lz-139",
+    "src": "/inspiration/lz-archive/lz-139.webp",
+    "title": "Fabrication inspiration 32",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 32"
+  },
+  {
+    "id": "lz-140",
+    "src": "/inspiration/lz-archive/lz-140.webp",
+    "title": "Fabrication inspiration 33",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 33"
+  },
+  {
+    "id": "lz-141",
+    "src": "/inspiration/lz-archive/lz-141.webp",
+    "title": "Fabrication inspiration 34",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 34"
+  },
+  {
+    "id": "lz-142",
+    "src": "/inspiration/lz-archive/lz-142.webp",
+    "title": "Fabrication inspiration 35",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 35"
+  },
+  {
+    "id": "lz-143",
+    "src": "/inspiration/lz-archive/lz-143.webp",
+    "title": "Fabrication inspiration 36",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 36"
+  },
+  {
+    "id": "lz-144",
+    "src": "/inspiration/lz-archive/lz-144.webp",
+    "title": "Fabrication inspiration 37",
+    "detail": "Stone fabrication, shop work, and precision processes",
+    "category": "Fabrication",
+    "alt": "AI-generated LZ Custom fabrication inspiration concept 37"
+  },
+  {
+    "id": "lz-145",
+    "src": "/inspiration/lz-archive/lz-145.webp",
+    "title": "Materials & surfaces inspiration 28",
+    "detail": "Material, finish, and surface inspiration",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 28"
+  },
+  {
+    "id": "lz-146",
+    "src": "/inspiration/lz-archive/lz-146.webp",
+    "title": "Materials & surfaces inspiration 29",
+    "detail": "Material, finish, and surface inspiration",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 29"
+  },
+  {
+    "id": "lz-147",
+    "src": "/inspiration/lz-archive/lz-147.webp",
+    "title": "Materials & surfaces inspiration 30",
+    "detail": "Material, finish, and surface inspiration",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 30"
+  },
+  {
+    "id": "lz-148",
+    "src": "/inspiration/lz-archive/lz-148.webp",
+    "title": "Materials & surfaces inspiration 31",
+    "detail": "Material, finish, and surface inspiration",
+    "category": "Materials & surfaces",
+    "alt": "AI-generated LZ Custom materials & surfaces inspiration concept 31"
+  },
+  {
+    "id": "lz-150",
+    "src": "/inspiration/lz-archive/lz-150.webp",
+    "title": "Installation inspiration 05",
+    "detail": "Measurement, delivery, fitting, and installation concepts",
+    "category": "Installation",
+    "alt": "AI-generated LZ Custom installation inspiration concept 5"
+  },
+  {
+    "id": "lz-152",
+    "src": "/inspiration/lz-archive/lz-152.webp",
+    "title": "Installation inspiration 06",
+    "detail": "Measurement, delivery, fitting, and installation concepts",
+    "category": "Installation",
+    "alt": "AI-generated LZ Custom installation inspiration concept 6"
+  },
+  {
+    "id": "lz-153",
+    "src": "/inspiration/lz-archive/lz-153.webp",
+    "title": "Cabinetry & wood inspiration 12",
+    "detail": "Cabinet profiles, wood tones, and built-in details",
+    "category": "Cabinetry & wood",
+    "alt": "AI-generated LZ Custom cabinetry & wood inspiration concept 12"
+  },
+  {
+    "id": "lz-154",
+    "src": "/inspiration/lz-archive/lz-154.webp",
+    "title": "Cabinetry & wood inspiration 13",
+    "detail": "Cabinet profiles, wood tones, and built-in details",
+    "category": "Cabinetry & wood",
+    "alt": "AI-generated LZ Custom cabinetry & wood inspiration concept 13"
   }
 ]

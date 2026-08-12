@@ -1,7 +1,9 @@
 services:
   api:
     build: ./backend
-    env_file: .env.local
+    env_file:
+      - .env.local
+      - ${LODEX_VAULT_ENV_FILE:-.env.local}
     volumes:
       - ./data:/app/data
     ports:

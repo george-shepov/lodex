@@ -6,6 +6,7 @@ import './shadcn.css'
 import './style.css'
 import './virtual.css'
 import './enhancements.css'
+import './admin.css'
 
 createApp(App).mount('#app')
 installLodexEnhancements()

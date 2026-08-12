@@ -1,0 +1,238 @@
+<script setup>
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+
+const emit = defineEmits(['join-room'])
+
+const token = ref('')
+const authenticated = ref(false)
+const loading = ref(true)
+const error = ref('')
+const overview = ref({ active_visitors: [], project_requests: [], support_requests: [], counts: {} })
+const alertsEnabled = ref(false)
+const selectedProject = ref(null)
+let eventSocket = null
+let refreshTimer = null
+let socketPing = null
+let audioContext = null
+
+const activeVisitors = computed(() => overview.value.active_visitors || [])
+const projectRequests = computed(() => overview.value.project_requests || [])
+const supportRequests = computed(() => overview.value.support_requests || [])
+
+async function api(path, options = {}) {
+  const response = await fetch(path, {
+    credentials: 'same-origin',
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+  })
+  const raw = await response.text()
+  let data = {}
+  try { data = raw ? JSON.parse(raw) : {} } catch {}
+  if (!response.ok) throw new Error(data.detail || `Request failed (${response.status}).`)
+  return data
+}
+
+async function checkSession() {
+  loading.value = true
+  try {
+    await api('/api/admin/session')
+    authenticated.value = true
+    await startDashboard()
+  } catch {
+    authenticated.value = false
+  } finally {
+    loading.value = false
+  }
+}
+
+async function login() {
+  error.value = ''
+  try {
+    await api('/api/admin/login', { method: 'POST', body: JSON.stringify({ token: token.value }) })
+    token.value = ''
+    authenticated.value = true
+    await startDashboard()
+  } catch (loginError) {
+    error.value = loginError.message
+  }
+}
+
+async function logout() {
+  try { await api('/api/admin/session', { method: 'DELETE' }) } catch {}
+  disconnectEvents()
+  authenticated.value = false
+  overview.value = { active_visitors: [], project_requests: [], support_requests: [], counts: {} }
+}
+
+async function loadOverview() {
+  if (!authenticated.value) return
+  try {
+    overview.value = await api('/api/admin/overview')
+    error.value = ''
+  } catch (loadError) {
+    error.value = loadError.message
+    if (/authentication/i.test(loadError.message)) authenticated.value = false
+  }
+}
+
+function connectEvents() {
+  disconnectEvents()
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  eventSocket = new WebSocket(`${protocol}//${window.location.host}/api/admin/events`)
+  eventSocket.onmessage = event => {
+    const message = JSON.parse(event.data)
+    if (['visitor.entered', 'project.created', 'support.requested', 'project.updated'].includes(message.type)) {
+      notifyOwner(message)
+      loadOverview()
+    }
+  }
+  eventSocket.onclose = () => {
+    if (authenticated.value) window.setTimeout(connectEvents, 3000)
+  }
+  socketPing = window.setInterval(() => {
+    if (eventSocket?.readyState === WebSocket.OPEN) eventSocket.send('ping')
+  }, 20000)
+}
+
+function disconnectEvents() {
+  window.clearInterval(socketPing)
+  socketPing = null
+  if (eventSocket) {
+    eventSocket.onclose = null
+    eventSocket.close()
+  }
+  eventSocket = null
+}
+
+async function startDashboard() {
+  await loadOverview()
+  connectEvents()
+  window.clearInterval(refreshTimer)
+  refreshTimer = window.setInterval(loadOverview, 15000)
+}
+
+async function enableAlerts() {
+  audioContext ||= new (window.AudioContext || window.webkitAudioContext)()
+  if (audioContext.state === 'suspended') await audioContext.resume()
+  if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission()
+  alertsEnabled.value = true
+  beep(740, 0.12)
+}
+
+function beep(frequency = 680, duration = 0.18) {
+  if (!alertsEnabled.value || !audioContext) return
+  const oscillator = audioContext.createOscillator()
+  const gain = audioContext.createGain()
+  oscillator.frequency.value = frequency
+  oscillator.type = 'sine'
+  gain.gain.setValueAtTime(0.0001, audioContext.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.16, audioContext.currentTime + 0.02)
+  gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + duration)
+  oscillator.connect(gain).connect(audioContext.destination)
+  oscillator.start()
+  oscillator.stop(audioContext.currentTime + duration + 0.02)
+}
+
+function notifyOwner(event) {
+  const titles = {
+    'visitor.entered': 'Someone is on LODEX',
+    'project.created': 'New LODEX project request',
+    'support.requested': 'Live support call requested',
+    'project.updated': 'Project status updated',
+  }
+  const body = event.type === 'visitor.entered'
+    ? event.payload.path
+    : event.type === 'support.requested'
+      ? `${event.payload.name || 'Visitor'} · room ${event.payload.room_code}`
+      : `${event.payload.project_code || ''} ${event.payload.service_category || ''}`.trim()
+  beep(event.type === 'support.requested' ? 920 : 680, event.type === 'support.requested' ? 0.28 : 0.16)
+  if (alertsEnabled.value && 'Notification' in window && Notification.permission === 'granted') {
+    new Notification(titles[event.type], { body, icon: '/lodex-icon.svg', tag: event.type === 'visitor.entered' ? 'lodex-visitor' : `${event.type}-${Date.now()}` })
+  }
+}
+
+async function updateStatus(project, status) {
+  try {
+    await api(`/api/admin/projects/${encodeURIComponent(project.project_code)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, note: '' }),
+    })
+    await loadOverview()
+  } catch (statusError) {
+    error.value = statusError.message
+  }
+}
+
+function joinRoom(roomCode) {
+  emit('join-room', roomCode)
+}
+
+function formatDate(value) {
+  if (!value) return '—'
+  return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+}
+
+onMounted(checkSession)
+onBeforeUnmount(() => {
+  disconnectEvents()
+  window.clearInterval(refreshTimer)
+  if (audioContext) audioContext.close()
+})
+</script>
+
+<template>
+  <section class="admin-shell">
+    <div v-if="loading" class="admin-login"><p>Opening the LODEX owner dashboard…</p></div>
+    <form v-else-if="!authenticated" class="admin-login" @submit.prevent="login">
+      <img src="/lodex-logo-gold.svg" alt="LODEX" />
+      <p class="eyebrow">Owner access</p>
+      <h1>Projects, visitors and live support.</h1>
+      <p>Use the same administrator token as the Giorgiy Operations Center. It is exchanged for a private, secure session cookie.</p>
+      <label>Administrator token<input v-model="token" type="password" autocomplete="current-password" required /></label>
+      <button class="primary-button" type="submit">Open dashboard <span>↗</span></button>
+      <p v-if="error" class="error">{{ error }}</p>
+    </form>
+
+    <template v-else>
+      <header class="admin-header">
+        <div><p class="eyebrow">LODEX owner dashboard</p><h1>Live work desk</h1></div>
+        <div class="admin-header-actions"><button class="outline-button" type="button" @click="enableAlerts">{{ alertsEnabled ? 'Alerts enabled' : 'Enable phone alerts' }}</button><button class="back-button" type="button" @click="logout">Sign out</button></div>
+      </header>
+      <p v-if="error" class="admin-error">{{ error }}</p>
+
+      <div class="admin-metrics">
+        <article><span>On the site now</span><b>{{ overview.active_count || 0 }}</b><small>Anonymous live sessions</small></article>
+        <article><span>Visitors today</span><b>{{ overview.visitors_today || 0 }}</b><small>Unique browser sessions</small></article>
+        <article><span>Project requests</span><b>{{ overview.counts?.projects || 0 }}</b><small>Latest 100 shown below</small></article>
+        <article><span>Waiting for video</span><b>{{ overview.counts?.waiting_support || 0 }}</b><small>Live support requests</small></article>
+      </div>
+
+      <section class="admin-panel">
+        <div class="admin-panel-heading"><div><p class="eyebrow">Right now</p><h2>Active visitors</h2></div><button class="outline-button" type="button" @click="loadOverview">Refresh</button></div>
+        <div v-if="activeVisitors.length" class="admin-visitor-list"><article v-for="visitor in activeVisitors" :key="visitor.visitor_id"><i></i><div><b>{{ visitor.page_title || 'LODEX visitor' }}</b><span>{{ visitor.path }}</span></div><small>{{ formatDate(visitor.last_seen) }}</small></article></div>
+        <p v-else class="admin-empty">Nobody is actively browsing right now.</p>
+      </section>
+
+      <section class="admin-panel">
+        <div class="admin-panel-heading"><div><p class="eyebrow">Video support</p><h2>Call requests</h2></div></div>
+        <div v-if="supportRequests.length" class="admin-support-grid"><article v-for="request in supportRequests" :key="request.id"><span>{{ request.status }}</span><h3>{{ request.name || 'Site visitor' }}</h3><p>{{ request.message || 'Requested a live video visit.' }}</p><small>{{ request.phone || 'No phone provided' }} · {{ formatDate(request.created_at) }}</small><button class="primary-button" type="button" @click="joinRoom(request.room_code)">Join {{ request.room_code }} <b>↗</b></button></article></div>
+        <p v-else class="admin-empty">No live support requests yet.</p>
+      </section>
+
+      <section class="admin-panel">
+        <div class="admin-panel-heading"><div><p class="eyebrow">Customer inbox</p><h2>Project requests and messages</h2></div></div>
+        <div v-if="projectRequests.length" class="admin-project-list">
+          <article v-for="request in projectRequests" :key="request.project_code">
+            <div class="admin-project-top"><div><span>{{ request.project_code }} · {{ request.status }}</span><h3>{{ request.name }} — {{ request.service_category }}</h3><p>{{ request.address }}</p></div><small>{{ formatDate(request.created_at) }}</small></div>
+            <div class="admin-project-meta"><span><b>Phone</b>{{ request.phone }}</span><span><b>Email</b>{{ request.email || '—' }}</span><span><b>Requested visit</b>{{ request.preferred_date }} · {{ request.preferred_time }}</span><span><b>Payment</b>{{ request.payment_status }}</span></div>
+            <p class="admin-summary">{{ request.project_summary }}</p>
+            <details v-if="request.conversation?.length"><summary>Open complete conversation ({{ request.conversation.length }})</summary><div class="admin-conversation"><p v-for="(message, index) in request.conversation" :key="index" :class="message.role"><b>{{ message.role === 'user' ? request.name : 'LODEX' }}</b>{{ message.text }}</p></div></details>
+            <div class="admin-project-actions"><button type="button" class="outline-button" @click="selectedProject = selectedProject === request.project_code ? null : request.project_code">{{ selectedProject === request.project_code ? 'Hide files' : `Files (${request.uploads?.length || 0})` }}</button><button type="button" class="outline-button" @click="joinRoom(request.project_code)">Join video room</button><select :value="request.status" @change="updateStatus(request, $event.target.value)"><option value="requested">Requested</option><option value="contacted">Contacted</option><option value="scheduled">Scheduled</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div>
+            <ul v-if="selectedProject === request.project_code" class="admin-files"><li v-for="file in request.uploads" :key="file.upload_id"><b>{{ file.filename }}</b><span>{{ file.description || file.media_type }}</span></li><li v-if="!request.uploads?.length">No files attached.</li></ul>
+          </article>
+        </div>
+        <p v-else class="admin-empty">No project requests have been submitted.</p>
+      </section>
+    </template>
+  </section>
+</template>
