@@ -133,8 +133,8 @@ const services = [
     useCases: ['House exterior, patio, driveway, or concrete cleaning', 'A property that needs a cleanup before its next use', 'Metal, masonry, or specialty surfaces needing careful restoration'],
     starter: 'I need cleaning or restoration help. The surface/item is: ',
     heroImages: [
-      { src: '/services/pressure-washing-wide.webp', alt: 'LODEX professional pressure washing a residential driveway', position: 'center center' },
-      { src: '/services/pressure-washing-entry.webp', alt: 'LODEX professional pressure washing a walkway at a residential entrance', position: 'center center' },
+      { src: '/services/pressure-washing-wide.webp', alt: 'LODEX professional pressure washing a residential driveway', position: 'center top' },
+      { src: '/services/pressure-washing-entry.webp', alt: 'LODEX professional pressure washing a walkway at a residential entrance', position: 'center top' },
     ],
     galleryCategories: [],
   },
@@ -294,7 +294,7 @@ const galleryHeroSlides = lzGalleryProjects
   .filter(project => ['Kitchens', 'Bathrooms', 'Commercial', 'Installation', 'Painting', 'Tile & patterns'].includes(project.category))
   .map(asGallerySlide)
 const homePhotoSlides = rotateFromStoredPosition([...brandedHeroSlides, ...galleryHeroSlides], 'lodex-home-reel-start', 7).slice(0, 7)
-const logoVideoSlide = sequence => ({ id: `lodex-logo-${sequence}`, type: 'video', src: '/lodex-hero.mp4', poster: '/LODEX-Residential-and-Commercial-Services-logo.png', title: 'LODEX Home Services', eyebrow: 'Residential & commercial' })
+const logoVideoSlide = sequence => ({ id: `lodex-logo-${sequence}`, type: 'video', src: '/lodex-hero.mp4', poster: '/LODEX-Residential-and-Commercial-Services-logo.png', title: 'One point of contact for the work ahead', eyebrow: 'Residential & commercial' })
 const homeHeroSlides = [
   ...homePhotoSlides.slice(0, 2),
   logoVideoSlide(1),
@@ -746,7 +746,7 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); wind
 
     <template v-else>
       <section id="top" class="hero page-width">
-        <div class="hero-copy"><p class="eyebrow">LODEX Home Services</p><h1>Whatcha tryna <em>do?</em></h1><p class="lede">Renovate. Repair & maintain. Deliver & install. Find & source. Clean & restore. Choose the kind of help you need, or tell us the whole project in your own words.</p><div class="hero-service-lanes" aria-label="Choose a LODEX service"><button v-for="service in services" :key="service.slug" type="button" @click="chooseService(service); scrollToIntake()">{{ service.nav }}</button></div><div class="hero-actions"><button type="button" class="primary-button" @click="scrollToIntake">Start with your project <span>↗</span></button><a class="phone-link" :href="phoneHref">Or call {{ phone }}</a></div></div>
+        <div class="hero-copy"><p class="eyebrow">LODEX · Northeast Ohio</p><h1>One call. <em>Real progress.</em></h1><p class="lede">From repairs and maintenance to delivery, installation, cleanup, restoration, and larger improvements, LODEX gives you one local point of contact and a clear next step.</p><div class="hero-value-points" aria-label="Why start with LODEX"><span>One point of contact</span><span>Photo-first intake</span><span>Residential & commercial</span></div><div class="hero-service-lanes" aria-label="Choose a LODEX service"><button v-for="service in services" :key="service.slug" type="button" @click="chooseService(service); scrollToIntake()">{{ service.nav }}</button></div><div class="hero-actions"><button type="button" class="primary-button" @click="scrollToIntake">Start with your project <span>↗</span></button><a class="phone-link" :href="phoneHref">Or call {{ phone }}</a></div></div>
         <div class="hero-visual" aria-label="LODEX services and project inspiration slideshow">
           <Transition name="reel-fade">
             <img v-if="homeHeroSlide.type === 'image'" :key="homeHeroSlide.id" class="hero-reel-media" :src="homeHeroSlide.src" :alt="homeHeroSlide.alt" :style="{ objectPosition: homeHeroSlide.position }" width="1254" height="1254" fetchpriority="high" decoding="async" @error="advanceHomeHero" />
