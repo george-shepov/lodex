@@ -40,6 +40,7 @@ const paymentStatus = ref('not_started')
 const paymentError = ref('')
 const heroIntroOpen = ref(true)
 const heroIntroClosing = ref(false)
+const selectedInspiration = ref(null)
 let heroIntroCloseTimer = null
 
 const services = [
@@ -130,6 +131,30 @@ const laserProjects = [
     video: '/portfolio/laser/metal-panel-surface-cleaning.mp4',
     poster: '/portfolio/laser/metal-panel-surface-cleaning.webp',
   },
+]
+
+const inspirationProjects = [
+  { src: '/inspiration/lz-cabinetry.png', title: 'Custom cabinetry', detail: 'Built-ins, kitchens, and storage' },
+  { src: '/inspiration/lz-countertops.png', title: 'Stone & countertops', detail: 'Measure, source, fabricate, install' },
+  { src: '/inspiration/lz-tile.png', title: 'Tile & surfaces', detail: 'Clean layouts and careful finish work' },
+  { src: '/inspiration/lz-bathroom.png', title: 'Bathroom finishes', detail: 'Refresh, repair, and restore' },
+  { src: '/inspiration/lz-commercial.png', title: 'Commercial spaces', detail: 'Durable improvements with less disruption' },
+  { src: '/inspiration/lz-custom/lz-kitchen-showroom.png', title: 'Kitchen showroom', detail: 'A coordinated material and finish palette' },
+  { src: '/inspiration/lz-custom/lz-kitchen-granite.png', title: 'Granite kitchen', detail: 'Stone surfaces with a finished installation' },
+  { src: '/inspiration/lz-custom/lz-kitchen-oak.png', title: 'Oak kitchen', detail: 'Warm cabinetry and practical storage' },
+  { src: '/inspiration/lz-custom/lz-bathroom-carrara.png', title: 'Carrara bathroom', detail: 'Bright stone and clean detailing' },
+  { src: '/inspiration/lz-custom/lz-bathroom-marble.png', title: 'Marble bathroom', detail: 'A complete high-finish room concept' },
+  { src: '/inspiration/lz-custom/lz-countertop-installation.png', title: 'Countertop installation', detail: 'Careful placement and final fit' },
+  { src: '/inspiration/lz-custom/lz-granite-cnc.png', title: 'Granite fabrication', detail: 'Precision work before installation' },
+  { src: '/inspiration/lz-custom/lz-stone-fabrication.png', title: 'Stone fabrication', detail: 'From raw slab to finished surface' },
+  { src: '/inspiration/lz-custom/lz-stone-measuring.png', title: 'Field measuring', detail: 'The details that make the final fit work' },
+  { src: '/inspiration/lz-custom/lz-tile-craft.png', title: 'Tile craft', detail: 'Layout, alignment, and finish quality' },
+  { src: '/inspiration/lz-custom/lz-tile-pattern.png', title: 'Patterned tile', detail: 'A more expressive surface treatment' },
+  { src: '/inspiration/lz-custom/lz-installation-team.png', title: 'Installation team', detail: 'Coordinated delivery and skilled setup' },
+  { src: '/inspiration/lz-custom/lz-workshop.png', title: 'Workshop', detail: 'Where custom pieces take shape' },
+  { src: '/inspiration/lz-custom/lz-commercial-office.png', title: 'Commercial office', detail: 'A polished space built for daily use' },
+  { src: '/inspiration/lz-custom/lz-commercial-industrial.png', title: 'Industrial commercial', detail: 'Practical improvements at a larger scale' },
+  { src: '/inspiration/lz-custom/lz-commercial-painting.png', title: 'Commercial painting', detail: 'Finish work with minimal disruption' },
 ]
 
 const messages = ref([{ role: 'assistant', text: 'What can LODEX take off your plate? Choose a service below, tell us in your own words, or show us the space.' }])
@@ -387,9 +412,11 @@ function finishHeroIntro() {
   heroIntroClosing.value = true
   heroIntroCloseTimer = window.setTimeout(() => { heroIntroOpen.value = false }, 1200)
 }
+function closeInspiration() { selectedInspiration.value = null }
+function onKeydown(event) { if (event.key === 'Escape') closeInspiration() }
 function onPopState() { currentPath.value = window.location.pathname }
-onMounted(() => { window.addEventListener('popstate', onPopState); handlePaymentReturn() })
-onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stopVirtualMedia(); if (heroIntroCloseTimer) window.clearTimeout(heroIntroCloseTimer) })
+onMounted(() => { window.addEventListener('popstate', onPopState); window.addEventListener('keydown', onKeydown); handlePaymentReturn() })
+onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); window.removeEventListener('keydown', onKeydown); stopVirtualMedia(); if (heroIntroCloseTimer) window.clearTimeout(heroIntroCloseTimer) })
 </script>
 
 <template>
@@ -428,10 +455,10 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stop
     <template v-else>
       <section id="top" class="hero page-width">
         <div class="hero-copy"><p class="eyebrow">LODEX Home Services</p><h1>Whatcha tryna <em>do?</em></h1><p class="lede">Renovate. Repair & maintain. Deliver & install. Find & source. Clean & restore. Choose the kind of help you need, or tell us the whole project in your own words.</p><div class="hero-service-lanes" aria-label="Choose a LODEX service"><button v-for="service in services" :key="service.slug" type="button" @click="chooseService(service); scrollToIntake()">{{ service.nav }}</button></div><div class="hero-actions"><button type="button" class="primary-button" @click="scrollToIntake">Start with your project <span>↗</span></button><a class="phone-link" :href="phoneHref">Or call {{ phone }}</a></div></div>
-        <div class="hero-visual" aria-label="LODEX project examples"><video class="hero-background-video" autoplay muted loop playsinline preload="metadata" poster="/inspiration/custom-cabinetry.png" aria-label="LODEX project showcase"><source src="/lodex-hero.mp4" type="video/mp4"/></video><div class="hero-video-scrim"></div><div class="hero-proof"><b>Details matter.</b><span>Show us the work area. We’ll help determine the next step.</span></div></div>
+        <div class="hero-visual" aria-label="LODEX project examples"><video class="hero-background-video" autoplay muted loop playsinline preload="metadata" poster="/inspiration/custom-cabinetry.png" aria-label="LODEX project showcase"><source src="/lodex-hero.mp4" type="video/mp4"/></video><div class="hero-video-scrim"></div><div class="hero-media-caption"><span>Real project footage</span><b>Design · build · restore</b></div></div>
       </section>
 
-      <section id="inspiration" class="inspiration-section page-width"><div class="section-heading"><div><p class="eyebrow">Inspiration gallery</p><h2>See what thoughtful work can look like.</h2></div><p>These LZ Custom examples show the range—from cabinetry and stone to tile, bathrooms, and commercial spaces. Use them as a starting point, then send us the details of your own project.</p></div><div class="inspiration-grid"><figure><img src="/inspiration/lz-cabinetry.png" alt="Custom wood cabinetry detail" loading="lazy"/><figcaption><b>Cabinetry</b><span>Built-ins, kitchens, and storage</span></figcaption></figure><figure><img src="/inspiration/lz-countertops.png" alt="Granite countertop installation" loading="lazy"/><figcaption><b>Stone & countertops</b><span>Measure, source, fabricate, install</span></figcaption></figure><figure><img src="/inspiration/lz-tile.png" alt="Precision tile installation" loading="lazy"/><figcaption><b>Tile & surfaces</b><span>Clean layouts and careful finish work</span></figcaption></figure><figure><img src="/inspiration/lz-bathroom.png" alt="Luxury bathroom with stone finishes" loading="lazy"/><figcaption><b>Bathrooms</b><span>Refresh, repair, and restore</span></figcaption></figure><figure><img src="/inspiration/lz-commercial.png" alt="Commercial interior painting project" loading="lazy"/><figcaption><b>Commercial spaces</b><span>Durable improvements with less disruption</span></figcaption></figure></div></section>
+      <section id="inspiration" class="inspiration-section page-width"><div class="section-heading"><div><p class="eyebrow">LZ Custom inspiration · {{ inspirationProjects.length }} images</p><h2>See what thoughtful work can look like.</h2></div><p>The complete LZ Custom collection is here—from cabinetry and stone to tile, bathrooms, fabrication, and commercial spaces. Tap any image for the full view, then show us what you want to make your own.</p></div><div class="inspiration-grid"><figure v-for="project in inspirationProjects" :key="project.src" tabindex="0" role="button" :aria-label="`View ${project.title}`" @click="selectedInspiration = project" @keydown.enter="selectedInspiration = project" @keydown.space.prevent="selectedInspiration = project"><img :src="project.src" :alt="project.title" loading="lazy"/><figcaption><b>{{ project.title }}</b><span>{{ project.detail }}</span></figcaption></figure></div></section>
 
       <section id="services" class="services-section page-width"><div class="section-heading"><div><p class="eyebrow">LODEX services</p><h2>Renovate, repair, deliver, source, and restore.</h2></div><p>Five clear ways to start. Every service begins with a practical look at scope, access, timing, materials, and the next step.</p></div><div class="service-grid"><a v-for="(service, index) in services" :key="service.slug" class="service-card" :href="serviceHref(service)" @click.prevent="openService(service)"><span>0{{ index + 1 }}</span><h3>{{ service.title }}</h3><p>{{ service.summary }}</p><b>Explore service →</b></a></div></section>
 
@@ -450,6 +477,8 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stop
 
       <section id="project" class="project-section page-width"><div class="section-heading"><div><p class="eyebrow">Returning customers</p><h2>Your project, in one place.</h2></div><p>Use your project code and the phone number on the request to see the latest scope and next step.</p></div><form class="lookup-card" @submit.prevent="lookupProject"><label>Project code<input v-model="projectCode" placeholder="LDX-123456" autocomplete="off"/></label><label>Phone used for the request<input v-model="projectPhone" type="tel" placeholder="216-555-0123" autocomplete="tel"/></label><button type="submit" class="primary-button">Open my project <span>↗</span></button><p v-if="projectError" class="error">{{ projectError }}</p><div v-if="project" class="project-result"><div class="project-result-top"><span>{{ project.status }}</span><b>{{ project.progress }}%</b></div><h3>{{ project.title }}</h3><p v-if="project.service_category" class="project-service">{{ project.service_category }}</p><p>{{ project.next_step }}</p><div class="meter-track"><i :style="{ width: `${project.progress}%` }"></i></div><small>Scope confirmation: {{ project.scope_confirmed ? '100% confirmed' : 'still being reviewed' }}</small><div v-if="paymentStatus === 'paid'" class="payment-confirmed">Deposit payment recorded.</div><button v-else type="button" class="primary-button" @click="startDeposit" :disabled="sending">{{ sending ? 'Opening secure checkout…' : 'Pay a requested deposit' }} <span>↗</span></button><p v-if="paymentError" class="error">{{ paymentError }}</p><button type="button" class="virtual-button" @click="openVirtualMeet">▣ Start virtual meet-and-greet</button></div></form></section>
     </template>
+
+    <div v-if="selectedInspiration" class="inspiration-lightbox" role="dialog" aria-modal="true" :aria-label="selectedInspiration.title" @click.self="closeInspiration"><button type="button" class="lightbox-close inspiration-lightbox-close" aria-label="Close image" @click="closeInspiration">×</button><img :src="selectedInspiration.src" :alt="selectedInspiration.title"/><div><b>{{ selectedInspiration.title }}</b><span>{{ selectedInspiration.detail }}</span></div></div>
 
     <footer class="site-footer"><div class="footer-shell"><section class="footer-intro"><a class="footer-brand-link" href="/" @click.prevent="goHome"><img class="footer-logo" src="/lodex-logo-blended.svg" alt="LODEX Residential & Commercial Services"/></a><p>One practical partner for property projects across Northeast Ohio—from sourcing to the finished walkthrough.</p></section><nav class="footer-group"><span>Services</span><a v-for="service in services" :key="service.slug" :href="serviceHref(service)" @click.prevent="openService(service)">{{ service.short }}</a></nav><nav class="footer-group"><span>Your project</span><a href="/#intake" @click.prevent="goHome('#intake')">Start a project</a><a href="/#project" @click.prevent="goHome('#project')">Open my project</a><a :href="phoneHref">Call {{ phone }}</a></nav><div class="footer-bottom"><span>© {{ new Date().getFullYear() }} LODEX · v{{ packageMetadata.version }}</span><span>Clear scope. Thoughtful work. No surprises.</span></div></div></footer>
 
