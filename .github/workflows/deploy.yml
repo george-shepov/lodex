@@ -77,7 +77,25 @@ jobs:
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
 
           docker compose -f "$compose" build api web
-          docker compose -f "$compose" up -d --force-recreate api web
+
+          # Docker can briefly report "removal is already in progress" or
+          # "No such container" when another VPS-side deploy/cleanup overlaps.
+          # Compose is idempotent, so retry the reconciliation after the daemon
+          # finishes settling instead of failing an otherwise valid build.
+          deploy_attempt=1
+          deploy_max_attempts=4
+          until docker compose -f "$compose" up -d api web; do
+            if [ "$deploy_attempt" -ge "$deploy_max_attempts" ]; then
+              echo "Docker Compose deployment failed after $deploy_max_attempts attempts." >&2
+              exit 1
+            fi
+
+            wait_seconds=$((deploy_attempt * 3))
+            echo "Docker Compose hit a transient container-state conflict; retrying in ${wait_seconds}s..." >&2
+            sleep "$wait_seconds"
+            deploy_attempt=$((deploy_attempt + 1))
+          done
+
           docker compose -f "$compose" ps api web
           REMOTE
 
