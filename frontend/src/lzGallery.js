@@ -33,14 +33,6 @@ export const lzGalleryProjects = [
     "alt": "AI-generated LZ Custom tile & patterns inspiration concept 1"
   },
   {
-    "id": "lz-030",
-    "src": "/inspiration/lz-archive/lz-030.webp",
-    "title": "Fabrication inspiration 01",
-    "detail": "Stone fabrication, shop work, and precision processes",
-    "category": "Fabrication",
-    "alt": "AI-generated LZ Custom fabrication inspiration concept 1"
-  },
-  {
     "id": "lz-001",
     "src": "/inspiration/lz-archive/lz-001.webp",
     "title": "Kitchens inspiration 02",
