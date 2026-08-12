@@ -38,11 +38,7 @@ const appointment = ref({ name: '', phone: '', email: '', address: '', preferred
 const notice = ref('')
 const paymentStatus = ref('not_started')
 const paymentError = ref('')
-const viewAliases = { '': 'home', top: 'home', services: 'services', inspiration: 'inspiration', 'laser-restoration': 'restoration', 'how-it-works': 'process', intake: 'start', project: 'project' }
-function viewFromHash(hash = '') { return viewAliases[hash.replace(/^#/, '')] || 'home' }
-function hashForView(view) { return view === 'home' ? '' : `#${view === 'restoration' ? 'laser-restoration' : view === 'process' ? 'how-it-works' : view === 'start' ? 'intake' : view}` }
-const currentView = ref(viewFromHash(window.location.hash))
-const heroIntroOpen = ref(currentView.value === 'home' && (() => { try { return sessionStorage.getItem('lodex-hero-intro-seen') !== '1' } catch { return true } })())
+const heroIntroOpen = ref(true)
 const heroIntroClosing = ref(false)
 let heroIntroCloseTimer = null
 
@@ -145,25 +141,19 @@ const scopeLabel = computed(() => agreed.value ? 'Scope confirmed' : intakeReady
 const canSchedule = computed(() => hasCustomerMessage.value || uploaded.value)
 const intakeTitle = computed(() => selectedService.value?.title || 'Your project')
 
-function setView(view) {
-  currentPath.value = '/'
-  currentView.value = view
-  window.history.pushState({}, '', `/${hashForView(view)}`)
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-  nextTick(() => document.querySelector('.view-shell')?.focus())
-}
-
 function serviceHref(service) { return `/services/${service.slug}` }
 function add(role, text, kind = null) {
   messages.value.push({ role, text, ...(kind ? { kind } : {}) })
   nextTick(() => document.querySelector('.messages')?.scrollTo({ top: 99999, behavior: 'smooth' }))
 }
-function scrollToIntake() { setView('start') }
-function goHome(hash = '') { setView(viewFromHash(hash)) }
+function scrollToIntake() { document.querySelector('#intake')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+function goHome(hash = '') {
+  navigate('/')
+  if (hash) nextTick(() => document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+}
 function navigate(path) {
   window.history.pushState({}, '', path)
   currentPath.value = window.location.pathname
-  currentView.value = viewFromHash(window.location.hash)
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 function openService(service) { navigate(serviceHref(service)) }
@@ -178,8 +168,9 @@ function chooseService(service, focus = true) {
 }
 function startFromService(service) {
   chooseService(service, false)
-  setView('start')
+  goHome()
   nextTick(() => {
+    scrollToIntake()
     document.querySelector('.composer textarea')?.focus()
   })
 }
@@ -394,12 +385,11 @@ function closeVirtualMeet() { stopVirtualMedia(); virtualOpen.value = false; vir
 function finishHeroIntro() {
   if (!heroIntroOpen.value || heroIntroClosing.value) return
   heroIntroClosing.value = true
-  try { sessionStorage.setItem('lodex-hero-intro-seen', '1') } catch {}
   heroIntroCloseTimer = window.setTimeout(() => { heroIntroOpen.value = false }, 1200)
 }
-function onLocationChange() { currentPath.value = window.location.pathname; currentView.value = viewFromHash(window.location.hash) }
-onMounted(() => { window.addEventListener('popstate', onLocationChange); window.addEventListener('hashchange', onLocationChange); handlePaymentReturn() })
-onBeforeUnmount(() => { window.removeEventListener('popstate', onLocationChange); window.removeEventListener('hashchange', onLocationChange); stopVirtualMedia(); if (heroIntroCloseTimer) window.clearTimeout(heroIntroCloseTimer) })
+function onPopState() { currentPath.value = window.location.pathname }
+onMounted(() => { window.addEventListener('popstate', onPopState); handlePaymentReturn() })
+onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); stopVirtualMedia(); if (heroIntroCloseTimer) window.clearTimeout(heroIntroCloseTimer) })
 </script>
 
 <template>
@@ -411,10 +401,10 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onLocationChange)
       <button type="button" class="nav-cta" @click="goHome(); nextTick(openSchedule)">Start a project <span>↗</span></button>
     </nav>
 
-    <section v-if="!activeService && currentView === 'home' && heroIntroOpen" class="hero-intro" :class="{ 'is-collapsing': heroIntroClosing }" aria-label="LODEX introduction">
+    <section v-if="!activeService && heroIntroOpen" class="hero-intro" :class="{ 'is-collapsing': heroIntroClosing }" aria-label="LODEX introduction">
       <div class="hero-intro-video-wrap"><video class="hero-intro-video" autoplay muted playsinline preload="auto" @ended="finishHeroIntro"><source src="/lodex-hero.mp4" type="video/mp4"/></video></div>
       <div class="hero-intro-shade"></div>
-      <img class="hero-intro-logo" src="/lodex-logo-white.svg" alt="LODEX Home Services" />
+      <img class="hero-intro-logo" src="/lodex-logo-gold.svg" alt="LODEX Home Services" />
       <div class="hero-intro-caption"><span>LODEX Home Services</span><b>Thoughtful work, from the first look to the finished handoff.</b></div>
       <button type="button" class="hero-intro-skip" @click="finishHeroIntro">Enter LODEX <span>↗</span></button>
     </section>
@@ -435,21 +425,21 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onLocationChange)
       <section class="service-next"><div class="page-width"><p class="eyebrow">Start with the real details</p><h2>Photo, video, or a few plain words is enough to begin.</h2><button type="button" class="primary-button" @click="startFromService(activeService)">Tell us about it <span>↗</span></button></div></section>
     </template>
 
-    <div v-else class="view-shell" :key="currentView" tabindex="-1">
-      <section v-if="currentView === 'home'" id="top" class="hero page-width">
+    <template v-else>
+      <section id="top" class="hero page-width">
         <div class="hero-copy"><p class="eyebrow">LODEX Home Services</p><h1>Whatcha tryna <em>do?</em></h1><p class="lede">Renovate. Repair & maintain. Deliver & install. Find & source. Clean & restore. Choose the kind of help you need, or tell us the whole project in your own words.</p><div class="hero-service-lanes" aria-label="Choose a LODEX service"><button v-for="service in services" :key="service.slug" type="button" @click="chooseService(service); scrollToIntake()">{{ service.nav }}</button></div><div class="hero-actions"><button type="button" class="primary-button" @click="scrollToIntake">Start with your project <span>↗</span></button><a class="phone-link" :href="phoneHref">Or call {{ phone }}</a></div></div>
         <div class="hero-visual" aria-label="LODEX project examples"><video class="hero-background-video" autoplay muted loop playsinline preload="metadata" poster="/inspiration/custom-cabinetry.png" aria-label="LODEX project showcase"><source src="/lodex-hero.mp4" type="video/mp4"/></video><div class="hero-video-scrim"></div><div class="hero-proof"><b>Details matter.</b><span>Show us the work area. We’ll help determine the next step.</span></div></div>
       </section>
 
-      <section v-if="currentView === 'inspiration'" id="inspiration" class="inspiration-section page-width"><div class="section-heading"><div><p class="eyebrow">Inspiration gallery</p><h2>See what thoughtful work can look like.</h2></div><p>These LZ Custom examples show the range—from cabinetry and stone to tile, bathrooms, and commercial spaces. Use them as a starting point, then send us the details of your own project.</p></div><div class="inspiration-grid"><figure><img src="/inspiration/lz-cabinetry.png" alt="Custom wood cabinetry detail" loading="lazy"/><figcaption><b>Cabinetry</b><span>Built-ins, kitchens, and storage</span></figcaption></figure><figure><img src="/inspiration/lz-countertops.png" alt="Granite countertop installation" loading="lazy"/><figcaption><b>Stone & countertops</b><span>Measure, source, fabricate, install</span></figcaption></figure><figure><img src="/inspiration/lz-tile.png" alt="Precision tile installation" loading="lazy"/><figcaption><b>Tile & surfaces</b><span>Clean layouts and careful finish work</span></figcaption></figure><figure><img src="/inspiration/lz-bathroom.png" alt="Luxury bathroom with stone finishes" loading="lazy"/><figcaption><b>Bathrooms</b><span>Refresh, repair, and restore</span></figcaption></figure><figure><img src="/inspiration/lz-commercial.png" alt="Commercial interior painting project" loading="lazy"/><figcaption><b>Commercial spaces</b><span>Durable improvements with less disruption</span></figcaption></figure></div></section>
+      <section id="inspiration" class="inspiration-section page-width"><div class="section-heading"><div><p class="eyebrow">Inspiration gallery</p><h2>See what thoughtful work can look like.</h2></div><p>These LZ Custom examples show the range—from cabinetry and stone to tile, bathrooms, and commercial spaces. Use them as a starting point, then send us the details of your own project.</p></div><div class="inspiration-grid"><figure><img src="/inspiration/lz-cabinetry.png" alt="Custom wood cabinetry detail" loading="lazy"/><figcaption><b>Cabinetry</b><span>Built-ins, kitchens, and storage</span></figcaption></figure><figure><img src="/inspiration/lz-countertops.png" alt="Granite countertop installation" loading="lazy"/><figcaption><b>Stone & countertops</b><span>Measure, source, fabricate, install</span></figcaption></figure><figure><img src="/inspiration/lz-tile.png" alt="Precision tile installation" loading="lazy"/><figcaption><b>Tile & surfaces</b><span>Clean layouts and careful finish work</span></figcaption></figure><figure><img src="/inspiration/lz-bathroom.png" alt="Luxury bathroom with stone finishes" loading="lazy"/><figcaption><b>Bathrooms</b><span>Refresh, repair, and restore</span></figcaption></figure><figure><img src="/inspiration/lz-commercial.png" alt="Commercial interior painting project" loading="lazy"/><figcaption><b>Commercial spaces</b><span>Durable improvements with less disruption</span></figcaption></figure></div></section>
 
-      <section v-if="currentView === 'services'" id="services" class="services-section page-width"><div class="section-heading"><div><p class="eyebrow">LODEX services</p><h2>Renovate, repair, deliver, source, and restore.</h2></div><p>Five clear ways to start. Every service begins with a practical look at scope, access, timing, materials, and the next step.</p></div><div class="service-grid"><a v-for="(service, index) in services" :key="service.slug" class="service-card" :href="serviceHref(service)" @click.prevent="openService(service)"><span>0{{ index + 1 }}</span><h3>{{ service.title }}</h3><p>{{ service.summary }}</p><b>Explore service →</b></a></div></section>
+      <section id="services" class="services-section page-width"><div class="section-heading"><div><p class="eyebrow">LODEX services</p><h2>Renovate, repair, deliver, source, and restore.</h2></div><p>Five clear ways to start. Every service begins with a practical look at scope, access, timing, materials, and the next step.</p></div><div class="service-grid"><a v-for="(service, index) in services" :key="service.slug" class="service-card" :href="serviceHref(service)" @click.prevent="openService(service)"><span>0{{ index + 1 }}</span><h3>{{ service.title }}</h3><p>{{ service.summary }}</p><b>Explore service →</b></a></div></section>
 
-      <section v-if="currentView === 'restoration'" id="laser-restoration" class="laser-showcase"><div class="page-width"><div class="section-heading"><div><p class="eyebrow">LODEX × Cyber Carp</p><h2>Laser restoration you can see.</h2></div><p>Rust, paint, surface buildup, and fire residue—shown in real working clips, not stock footage.</p></div><div class="laser-grid"><article v-for="project in laserProjects" :key="project.video" class="laser-card"><video :autoplay="project.featured" muted loop playsinline controls preload="metadata" :poster="project.poster" :aria-label="project.title"><source :src="project.video" type="video/mp4"/></video><div><span>{{ project.category }}</span><h3>{{ project.title }}</h3><p>{{ project.description }}</p></div></article></div><div class="laser-showcase-actions"><button type="button" class="primary-button" @click="openService(services[4])">Explore cleaning & restoration <span>↗</span></button><button type="button" class="text-button" @click="chooseService(services[4]); scrollToIntake()">Show us your surface →</button></div></div></section>
+      <section id="laser-restoration" class="laser-showcase"><div class="page-width"><div class="section-heading"><div><p class="eyebrow">LODEX × Cyber Carp</p><h2>Laser restoration you can see.</h2></div><p>Rust, paint, surface buildup, and fire residue—shown in real working clips, not stock footage.</p></div><div class="laser-grid"><article v-for="project in laserProjects" :key="project.video" class="laser-card"><video :autoplay="project.featured" muted loop playsinline controls preload="metadata" :poster="project.poster" :aria-label="project.title"><source :src="project.video" type="video/mp4"/></video><div><span>{{ project.category }}</span><h3>{{ project.title }}</h3><p>{{ project.description }}</p></div></article></div><div class="laser-showcase-actions"><button type="button" class="primary-button" @click="openService(services[4])">Explore cleaning & restoration <span>↗</span></button><button type="button" class="text-button" @click="chooseService(services[4]); scrollToIntake()">Show us your surface →</button></div></div></section>
 
-      <section v-if="currentView === 'process'" id="how-it-works" class="how-section"><div class="page-width"><p class="eyebrow">Simple by design</p><div class="how-grid"><h2>Clear scope before the work begins.</h2><div class="how-steps"><div><b>01</b><h3>Tell us the outcome</h3><p>Choose a service, describe the job, or send photos and short video.</p></div><div><b>02</b><h3>Confirm the real details</h3><p>We ask only what is needed to understand scope, access, timing, and materials.</p></div><div><b>03</b><h3>Set the next step</h3><p>Request a meet-and-greet or coordinated visit—then get a clear, confirmed plan.</p></div></div></div></div></section>
+      <section id="how-it-works" class="how-section"><div class="page-width"><p class="eyebrow">Simple by design</p><div class="how-grid"><h2>Clear scope before the work begins.</h2><div class="how-steps"><div><b>01</b><h3>Tell us the outcome</h3><p>Choose a service, describe the job, or send photos and short video.</p></div><div><b>02</b><h3>Confirm the real details</h3><p>We ask only what is needed to understand scope, access, timing, and materials.</p></div><div><b>03</b><h3>Set the next step</h3><p>Request a meet-and-greet or coordinated visit—then get a clear, confirmed plan.</p></div></div></div></div></section>
 
-      <section v-if="currentView === 'start'" id="intake" class="intake-section"><div class="page-width"><div class="intake-head"><div><p class="eyebrow">Start your project</p><h2>Let’s figure out <em>what’s next.</em></h2><p class="intake-copy">Selected service: <b>{{ intakeTitle }}</b></p></div><div class="scope-meter"><div class="scope-meter-top"><span>{{ scopeLabel }}</span><b>{{ scopePercent }}%</b></div><div class="meter-track"><i :style="{ width: `${scopePercent}%` }"></i></div><small>{{ qualification.qualified ? 'The required facts are covered; useful extras can still improve the visit.' : 'Progress reflects the service facts we actually need—not the number of messages.' }}</small></div></div>
+      <section id="intake" class="intake-section"><div class="page-width"><div class="intake-head"><div><p class="eyebrow">Start your project</p><h2>Let’s figure out <em>what’s next.</em></h2><p class="intake-copy">Selected service: <b>{{ intakeTitle }}</b></p></div><div class="scope-meter"><div class="scope-meter-top"><span>{{ scopeLabel }}</span><b>{{ scopePercent }}%</b></div><div class="meter-track"><i :style="{ width: `${scopePercent}%` }"></i></div><small>{{ qualification.qualified ? 'The required facts are covered; useful extras can still improve the visit.' : 'Progress reflects the service facts we actually need—not the number of messages.' }}</small></div></div>
         <div class="service-chips" aria-label="Choose a service"><button v-for="service in services" :key="service.slug" type="button" :class="{ selected: selectedService?.slug === service.slug }" @click="chooseService(service, false)">{{ service.short }}</button></div>
         <div class="flow"><span :class="{ active: step === 'chat' }">1. Talk it through</span><span :class="{ active: step === 'schedule' }">2. Request a visit</span><span :class="{ active: step === 'done' }">3. Keep the details</span></div>
         <div v-if="step === 'chat'" class="workspace"><div class="chat-card"><div class="chat-title"><i></i><div><b>LODEX project intake</b><small>Human-friendly questions, with AI help when useful.</small></div><button type="button" class="mini-link" @click="openSchedule">Request a visit ↗</button></div><div class="messages"><article v-for="(item, index) in messages" :key="index" :class="item.role"><p>{{ item.text }}</p></article><div v-if="sending" class="assistant"><p class="typing">Thinking through the project…</p></div></div><form class="composer" @submit.prevent="send"><textarea v-model="message" :disabled="sending" placeholder="For example: I need a TV mounted above a brick fireplace…" rows="3"></textarea><button type="submit" :disabled="sending || !message.trim()">Send</button></form></div>
@@ -458,8 +448,8 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onLocationChange)
         <div v-else class="success-card"><p class="eyebrow">Request received</p><h3>We’ll confirm the visit shortly.</h3><p>{{ notice }}</p><div v-if="projectCode" class="project-code"><span>Your project code</span><b>{{ projectCode }}</b><small>Save this code with the phone number you used. You can return to the project portal below.</small></div><div v-if="paymentStatus === 'paid'" class="payment-confirmed">Deposit payment recorded.</div><button v-else type="button" class="primary-button" @click="startDeposit" :disabled="sending">{{ sending ? 'Opening secure checkout…' : 'Pay a requested deposit' }} <span>↗</span></button><p v-if="paymentError" class="error">{{ paymentError }}</p><a class="text-link" href="#project">Open my project details →</a></div>
       </div></section>
 
-      <section v-if="currentView === 'project'" id="project" class="project-section page-width"><div class="section-heading"><div><p class="eyebrow">Returning customers</p><h2>Your project, in one place.</h2></div><p>Use your project code and the phone number on the request to see the latest scope and next step.</p></div><form class="lookup-card" @submit.prevent="lookupProject"><label>Project code<input v-model="projectCode" placeholder="LDX-123456" autocomplete="off"/></label><label>Phone used for the request<input v-model="projectPhone" type="tel" placeholder="216-555-0123" autocomplete="tel"/></label><button type="submit" class="primary-button">Open my project <span>↗</span></button><p v-if="projectError" class="error">{{ projectError }}</p><div v-if="project" class="project-result"><div class="project-result-top"><span>{{ project.status }}</span><b>{{ project.progress }}%</b></div><h3>{{ project.title }}</h3><p v-if="project.service_category" class="project-service">{{ project.service_category }}</p><p>{{ project.next_step }}</p><div class="meter-track"><i :style="{ width: `${project.progress}%` }"></i></div><small>Scope confirmation: {{ project.scope_confirmed ? '100% confirmed' : 'still being reviewed' }}</small><div v-if="paymentStatus === 'paid'" class="payment-confirmed">Deposit payment recorded.</div><button v-else type="button" class="primary-button" @click="startDeposit" :disabled="sending">{{ sending ? 'Opening secure checkout…' : 'Pay a requested deposit' }} <span>↗</span></button><p v-if="paymentError" class="error">{{ paymentError }}</p><button type="button" class="virtual-button" @click="openVirtualMeet">▣ Start virtual meet-and-greet</button></div></form></section>
-    </div>
+      <section id="project" class="project-section page-width"><div class="section-heading"><div><p class="eyebrow">Returning customers</p><h2>Your project, in one place.</h2></div><p>Use your project code and the phone number on the request to see the latest scope and next step.</p></div><form class="lookup-card" @submit.prevent="lookupProject"><label>Project code<input v-model="projectCode" placeholder="LDX-123456" autocomplete="off"/></label><label>Phone used for the request<input v-model="projectPhone" type="tel" placeholder="216-555-0123" autocomplete="tel"/></label><button type="submit" class="primary-button">Open my project <span>↗</span></button><p v-if="projectError" class="error">{{ projectError }}</p><div v-if="project" class="project-result"><div class="project-result-top"><span>{{ project.status }}</span><b>{{ project.progress }}%</b></div><h3>{{ project.title }}</h3><p v-if="project.service_category" class="project-service">{{ project.service_category }}</p><p>{{ project.next_step }}</p><div class="meter-track"><i :style="{ width: `${project.progress}%` }"></i></div><small>Scope confirmation: {{ project.scope_confirmed ? '100% confirmed' : 'still being reviewed' }}</small><div v-if="paymentStatus === 'paid'" class="payment-confirmed">Deposit payment recorded.</div><button v-else type="button" class="primary-button" @click="startDeposit" :disabled="sending">{{ sending ? 'Opening secure checkout…' : 'Pay a requested deposit' }} <span>↗</span></button><p v-if="paymentError" class="error">{{ paymentError }}</p><button type="button" class="virtual-button" @click="openVirtualMeet">▣ Start virtual meet-and-greet</button></div></form></section>
+    </template>
 
     <footer class="site-footer"><div class="footer-shell"><section class="footer-intro"><a class="footer-brand-link" href="/" @click.prevent="goHome"><img class="footer-logo" src="/lodex-logo-blended.svg" alt="LODEX Residential & Commercial Services"/></a><p>One practical partner for property projects across Northeast Ohio—from sourcing to the finished walkthrough.</p></section><nav class="footer-group"><span>Services</span><a v-for="service in services" :key="service.slug" :href="serviceHref(service)" @click.prevent="openService(service)">{{ service.short }}</a></nav><nav class="footer-group"><span>Your project</span><a href="/#intake" @click.prevent="goHome('#intake')">Start a project</a><a href="/#project" @click.prevent="goHome('#project')">Open my project</a><a :href="phoneHref">Call {{ phone }}</a></nav><div class="footer-bottom"><span>© {{ new Date().getFullYear() }} LODEX · v{{ packageMetadata.version }}</span><span>Clear scope. Thoughtful work. No surprises.</span></div></div></footer>
 
