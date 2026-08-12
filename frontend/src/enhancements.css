@@ -9,5 +9,30 @@
 .survey-recommend { display:flex; align-items:center; flex-wrap:wrap; gap:7px; margin-bottom:12px; }.survey-recommend span { margin-right:4px; color:var(--muted); font-size:11px; }.survey-recommend button { border:1px solid #d8d2c8; border-radius:999px; background:#fff; padding:6px 10px; color:#555; font-size:10px; font-weight:800; }.survey-recommend button.selected { border-color:var(--gold); background:#f8ead0; color:#6f4812; }
 .customer-survey textarea { width:100%; min-height:72px; resize:vertical; border:1px solid #ddd8cf; border-radius:9px; padding:10px; background:#fff; color:var(--ink); font:12px Manrope,sans-serif; outline:0; }.customer-survey textarea:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(210,162,84,.15); }
 .survey-actions { display:flex; align-items:center; gap:12px; margin-top:10px; }.survey-submit { border:0; border-radius:8px; background:var(--ink); color:#fff; padding:9px 12px; font-size:11px; font-weight:800; }.survey-submit:disabled { opacity:.4; cursor:not-allowed; }.survey-status { color:var(--muted); font-size:10px; }.customer-survey.submitted .survey-submit { display:none; }
-@media (max-width:760px) { .lodex-brand-loop { width:82%; height:280px; } .footer-wordmark strong { font-size:38px; } }
-@media (prefers-reduced-motion:reduce) { .lodex-brand-loop { animation:none; } }
+
+/* Chat controls: voice input and keyboard-first sending. */
+.composer textarea { flex:1 1 auto; min-width:0; }
+.composer .voice-input-button { width:46px; height:46px; flex:0 0 46px; align-self:flex-end; display:grid; place-items:center; padding:0; border:1px solid #d8d2c8; border-radius:9px; background:#fff; color:var(--ink); box-shadow:none; }
+.composer .voice-input-button:hover:not(:disabled) { border-color:var(--gold); background:#fffaf1; color:#8c5c18; }
+.composer .voice-input-button svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.composer .voice-input-button.is-listening { border-color:#b53a34; background:#b53a34; color:#fff; animation:lodex-voice-pulse 1.25s ease-in-out infinite; }
+.composer .voice-input-button:disabled { opacity:.32; cursor:not-allowed; }
+@keyframes lodex-voice-pulse { 0%,100% { box-shadow:0 0 0 0 rgba(181,58,52,.22); } 50% { box-shadow:0 0 0 7px rgba(181,58,52,.08); } }
+
+/* Every major section gets a quiet way back to the top. */
+.section-back-to-top { display:flex; align-items:center; justify-content:center; gap:8px; width:max-content; margin:28px auto 0; padding:10px 14px; border:0; border-radius:999px; background:transparent; color:#706b61; font:10px 'DM Mono',monospace; letter-spacing:.08em; text-transform:uppercase; box-shadow:none; }
+.section-back-to-top span { color:var(--gold); font-size:14px; }
+.section-back-to-top:hover { color:#8f5e1b; background:rgba(210,162,84,.09); }
+.intake-section>.section-back-to-top,.how-section>.section-back-to-top,.laser-showcase>.section-back-to-top { color:#bdc8c3; }
+.intake-section>.section-back-to-top:hover,.how-section>.section-back-to-top:hover,.laser-showcase>.section-back-to-top:hover { color:#fff; background:rgba(255,255,255,.07); }
+
+@media (max-width:760px) {
+  .lodex-brand-loop { width:82%; height:280px; }
+  .footer-wordmark strong { font-size:38px; }
+  .composer { flex-direction:row; flex-wrap:wrap; align-items:flex-end; }
+  .composer textarea { flex:1 1 calc(100% - 55px); }
+  .composer .voice-input-button { width:46px; flex:0 0 46px; }
+  .composer > button[type="submit"] { width:100%; }
+  .section-back-to-top { margin-top:22px; min-height:44px; }
+}
+@media (prefers-reduced-motion:reduce) { .lodex-brand-loop,.composer .voice-input-button.is-listening { animation:none; } }
