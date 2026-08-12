@@ -79,10 +79,10 @@ jobs:
           # Overlay allowlisted LODEX secrets from the encrypted VPS vault.
           # The existing .env.local remains the migration fallback for values
           # that have not been moved yet; vault values take precedence.
-          secret_broker=/home/shepov/deploy-manager/scripts/materialize-app-secrets.py
+          secret_broker=/opt/shepov-vault/bin/apply-app-secrets
           secret_policy=/opt/shepov-vault/app-secret-policies.json
           if [ -x "$secret_broker" ] && [ -f "$secret_policy" ]; then
-            if python3 "$secret_broker" lodex --policy-file "$secret_policy"; then
+            if "$secret_broker" lodex --policy-file "$secret_policy"; then
               export LODEX_VAULT_ENV_FILE=/run/shepov-secrets/lodex.env
             else
               echo 'LODEX vault materialization failed; refusing to deploy.' >&2
