@@ -39,12 +39,9 @@ const appointment = ref({ name: '', phone: '', email: '', address: '', preferred
 const notice = ref('')
 const paymentStatus = ref('not_started')
 const paymentError = ref('')
-const heroIntroOpen = ref(true)
-const heroIntroClosing = ref(false)
 const selectedInspiration = ref(null)
 const galleryFilter = ref('All')
 const galleryVisible = ref(24)
-let heroIntroCloseTimer = null
 
 const services = [
   {
@@ -396,11 +393,6 @@ function stopVirtualMedia() {
   virtualPeer = null; virtualSocket = null; remoteConnected.value = false; dualCamera.value = false
 }
 function closeVirtualMeet() { stopVirtualMedia(); virtualOpen.value = false; virtualStatus.value = ''; virtualError.value = '' }
-function finishHeroIntro() {
-  if (!heroIntroOpen.value || heroIntroClosing.value) return
-  heroIntroClosing.value = true
-  heroIntroCloseTimer = window.setTimeout(() => { heroIntroOpen.value = false }, 1200)
-}
 function closeInspiration() { selectedInspiration.value = null }
 function moveInspiration(direction) {
   const collection = lightboxCollection.value
@@ -415,7 +407,7 @@ function onKeydown(event) {
 }
 function onPopState() { currentPath.value = window.location.pathname }
 onMounted(() => { window.addEventListener('popstate', onPopState); window.addEventListener('keydown', onKeydown); handlePaymentReturn() })
-onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); window.removeEventListener('keydown', onKeydown); stopVirtualMedia(); if (heroIntroCloseTimer) window.clearTimeout(heroIntroCloseTimer) })
+onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); window.removeEventListener('keydown', onKeydown); stopVirtualMedia() })
 </script>
 
 <template>
@@ -426,14 +418,6 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); wind
       <div class="nav-links"><a href="/#services" @click.prevent="goHome('#services')">Services</a><a href="/inspiration" @click.prevent="openInspirationGallery">Inspiration</a><a href="/#how-it-works" @click.prevent="goHome('#how-it-works')">How it works</a><a href="/#project" @click.prevent="goHome('#project')">My project</a></div>
       <button type="button" class="nav-cta" @click="goHome(); nextTick(openSchedule)">Start a project <span>↗</span></button>
     </nav>
-
-    <section v-if="!activeService && !isInspirationPage && heroIntroOpen" class="hero-intro" :class="{ 'is-collapsing': heroIntroClosing }" aria-label="LODEX introduction">
-      <div class="hero-intro-video-wrap"><video class="hero-intro-video" autoplay muted playsinline preload="auto" @ended="finishHeroIntro"><source src="/lodex-hero.mp4" type="video/mp4"/></video></div>
-      <div class="hero-intro-shade"></div>
-      <img class="hero-intro-logo" src="/lodex-logo-gold.svg" alt="LODEX Home Services" />
-      <div class="hero-intro-caption"><span>LODEX Home Services</span><b>Thoughtful work, from the first look to the finished handoff.</b></div>
-      <button type="button" class="hero-intro-skip" @click="finishHeroIntro">Enter LODEX <span>↗</span></button>
-    </section>
 
     <template v-if="activeService">
       <section class="service-hero page-width">
@@ -479,7 +463,7 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); wind
     <template v-else>
       <section id="top" class="hero page-width">
         <div class="hero-copy"><p class="eyebrow">LODEX Home Services</p><h1>Whatcha tryna <em>do?</em></h1><p class="lede">Renovate. Repair & maintain. Deliver & install. Find & source. Clean & restore. Choose the kind of help you need, or tell us the whole project in your own words.</p><div class="hero-service-lanes" aria-label="Choose a LODEX service"><button v-for="service in services" :key="service.slug" type="button" @click="chooseService(service); scrollToIntake()">{{ service.nav }}</button></div><div class="hero-actions"><button type="button" class="primary-button" @click="scrollToIntake">Start with your project <span>↗</span></button><a class="phone-link" :href="phoneHref">Or call {{ phone }}</a></div></div>
-        <div class="hero-visual" aria-label="LODEX project examples"><video class="hero-background-video" autoplay muted loop playsinline preload="metadata" poster="/inspiration/custom-cabinetry.png" aria-label="LODEX project showcase"><source src="/lodex-hero.mp4" type="video/mp4"/></video><div class="hero-video-scrim"></div><div class="hero-media-caption"><span>Real project footage</span><b>Design · build · restore</b></div></div>
+        <div class="hero-visual" aria-label="LODEX project examples"><video class="hero-background-video" autoplay muted loop playsinline preload="metadata" poster="/inspiration/custom-cabinetry.png" aria-label="LODEX project showcase"><source src="/lodex-hero.mp4" type="video/mp4"/></video><div class="hero-video-scrim"></div></div>
       </section>
 
       <section id="inspiration" class="inspiration-section page-width"><div class="section-heading"><div><p class="eyebrow">LZ Custom inspiration · {{ lzGalleryProjects.length }} concepts</p><h2>See what thoughtful work can look like.</h2></div><div class="inspiration-intro"><p>These are AI-generated direction boards, clearly separated from our real project footage. Browse the full archive, then show us what you want to make your own.</p><button type="button" class="text-button" @click="openInspirationGallery">Explore all {{ lzGalleryProjects.length }} concepts →</button></div></div><div class="inspiration-grid"><figure v-for="project in inspirationProjects" :key="project.src" tabindex="0" role="button" :aria-label="`View ${project.title}`" @click="openInspiration(project)" @keydown.enter="openInspiration(project)" @keydown.space.prevent="openInspiration(project)"><img :src="project.src" :alt="project.title" loading="lazy"/><figcaption><b>{{ project.title }}</b><span>{{ project.detail }}</span></figcaption></figure></div><button type="button" class="gallery-more gallery-more-home" @click="openInspirationGallery">Open the complete inspiration archive <span>↗</span></button></section>
