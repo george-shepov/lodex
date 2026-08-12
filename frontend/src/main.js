@@ -3,6 +3,7 @@ import App from './App.vue'
 import InstallLodex from './components/InstallLodex.vue'
 import { installLodexEnhancements } from './enhancements.js'
 import { withInferredIntakeService } from './intakeServiceInference.mjs'
+import { guardIntakeReply } from './intakeQuestionGuard.mjs'
 import './shadcn.css'
 import './style.css'
 import './virtual.css'
@@ -12,15 +13,17 @@ import './admin.css'
 function installIntakeServiceInference() {
   const nativeFetch = window.fetch.bind(window)
 
-  window.fetch = (input, init = {}) => {
+  window.fetch = async (input, init = {}) => {
     const url = typeof input === 'string' ? input : input?.url || ''
     if (!/\/api\/intake\/chat(?:\?|$)/.test(url) || typeof init?.body !== 'string') {
       return nativeFetch(input, init)
     }
 
+    let intakePayload = null
     try {
       const payload = JSON.parse(init.body)
       const enrichedPayload = withInferredIntakeService(payload)
+      intakePayload = enrichedPayload
       if (enrichedPayload !== payload) {
         init = {
           ...init,
@@ -31,7 +34,26 @@ function installIntakeServiceInference() {
       // Preserve the original request if a caller sends non-JSON intake data.
     }
 
-    return nativeFetch(input, init)
+    const response = await nativeFetch(input, init)
+    if (!intakePayload || !response.ok) return response
+
+    try {
+      const responsePayload = await response.clone().json()
+      const guardedPayload = guardIntakeReply(intakePayload, responsePayload)
+      if (guardedPayload === responsePayload) return response
+
+      const headers = new Headers(response.headers)
+      headers.delete('content-length')
+      headers.delete('content-encoding')
+      headers.set('content-type', 'application/json')
+      return new Response(JSON.stringify(guardedPayload), {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      })
+    } catch {
+      return response
+    }
   }
 }
 
