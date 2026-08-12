@@ -1,7 +1,7 @@
 export const INTAKE_DRAFT_KEY = 'lodex-intake-draft-v1'
 
 function clean(value) {
-  return String(value || '').replace(/\s+/g, ' ').trim()
+  return String(value || '').replace(/\s+/g, ' ').trim().replace(/[.,;:!?]+$/, '')
 }
 
 function localIsoDate(date) {
@@ -48,9 +48,9 @@ export function inferProjectLocation(text) {
     const left = commercial[1].split(/\s+/).filter(Boolean)
     while (left.length && leadingStops.has(left[0].toLowerCase())) left.shift()
     const right = commercial[2].split(/\s+/).filter(Boolean)
-    const stopAt = right.findIndex(word => trailingStops.has(word.toLowerCase()))
+    const stopAt = right.findIndex(word => trailingStops.has(clean(word).toLowerCase()))
     const placeWords = stopAt >= 0 ? right.slice(0, stopAt) : right
-    if (left.length && placeWords.length) return `${left.join(' ')} in ${placeWords.join(' ')}`
+    if (left.length && placeWords.length) return clean(`${left.join(' ')} in ${placeWords.join(' ')}`)
   }
 
   const atPlace = value.match(/\b(?:at|in)\s+([A-Za-z0-9&'.-]+(?:\s+[A-Za-z0-9&'.-]+){0,4})(?=\s+(?:their|they|it|that|where|which|has|have|is|are|was|were)\b|[\n,;.!?]|$)/i)
