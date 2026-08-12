@@ -19,6 +19,38 @@
 .composer .voice-input-button:disabled { opacity:.32; cursor:not-allowed; }
 @keyframes lodex-voice-pulse { 0%,100% { box-shadow:0 0 0 0 rgba(181,58,52,.22); } 50% { box-shadow:0 0 0 7px rgba(181,58,52,.08); } }
 
+/* Chat + live project form: fit the viewport without iOS zoom and keep the form usable without AI. */
+html,body,#app { max-width:100%; overflow-x:hidden; }
+.intake-section { overflow-x:clip; }
+.workspace,.chat-card,.upload-card,.schedule-card,.messages,.composer,.intake-live-form,.intake-review-block { min-width:0; max-width:100%; }
+.chat-card { height:min(620px,calc(100dvh - 42px)); min-height:520px; scroll-margin-top:14px; }
+.chat-title b { font-size:19px; }
+.chat-title small { font-size:13px; }
+.messages p { font-size:16px; line-height:1.62; }
+.composer textarea { width:100%; min-height:88px; max-width:100%; resize:vertical; font-size:17px; line-height:1.5; }
+@media (min-width:1001px) { .workspace { grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr); } }
+
+.intake-live-form { display:grid; grid-template-columns:1fr 1fr; gap:11px; margin:4px 0 18px; padding:15px; border:1px solid #e1dbd0; border-radius:11px; background:#f9f6ef; }
+.intake-live-field { display:grid; gap:6px; min-width:0; }
+.intake-live-field span,.intake-review-block label>span,.intake-review-service span { color:#7e7466; font:9px 'DM Mono',monospace; letter-spacing:.08em; text-transform:uppercase; }
+.intake-live-field input,.intake-live-field textarea,.intake-review-block textarea { width:100%; min-width:0; border:1px solid #d8d1c6; border-radius:8px; padding:10px 11px; outline:0; background:#fff; color:var(--ink); font:14px/1.5 Manrope,sans-serif; }
+.intake-live-field input:focus,.intake-live-field textarea:focus,.intake-review-block textarea:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(210,162,84,.14); }
+.intake-live-service input { background:#f2eee5; color:#544f47; font-weight:800; }
+.intake-live-full { grid-column:1/-1; }
+.intake-live-full textarea { min-height:118px; resize:vertical; }
+.intake-live-form>small { grid-column:1/-1; color:#746e65; font-size:11px; line-height:1.5; }
+.legacy-intake-confirm { display:none !important; }
+.upload-card.needs-direct-entry,.schedule-card.needs-direct-entry { outline:3px solid rgba(210,162,84,.34); outline-offset:3px; }
+.intake-direct-notice { margin:0 0 14px; padding:11px 12px; border:1px solid #d6b879; border-radius:9px; background:#fff7e5; color:#674918; font-size:12px; font-weight:750; line-height:1.5; }
+
+.intake-review-block { grid-column:1/-1; display:grid; grid-template-columns:minmax(180px,.35fr) minmax(0,1fr); gap:12px; padding:16px; border:1px solid #e1dbd0; border-radius:11px; background:#faf7f0; }
+.intake-review-service { padding:11px; border:1px solid #e3ddd2; border-radius:8px; background:#f2eee5; }
+.intake-review-service b { display:block; margin-top:6px; font-size:13px; line-height:1.45; }
+.intake-review-block label { display:grid; gap:6px; min-width:0; }
+.intake-review-block textarea { min-height:128px; resize:vertical; }
+.intake-review-consent { grid-column:1/-1; display:flex; align-items:flex-start; gap:9px; padding:13px 14px; border:1px solid #ded7cc; border-radius:9px; background:#fff; color:#554f47; font-size:12px; line-height:1.5; }
+.intake-review-consent input { width:18px; height:18px; flex:0 0 18px; margin-top:1px; accent-color:var(--gold); }
+
 /* Every major section gets a quiet way back to the top. */
 .section-back-to-top { display:flex; align-items:center; justify-content:center; gap:8px; width:max-content; margin:28px auto 0; padding:10px 14px; border:0; border-radius:999px; background:transparent; color:#706b61; font:10px 'DM Mono',monospace; letter-spacing:.08em; text-transform:uppercase; box-shadow:none; }
 .section-back-to-top span { color:var(--gold); font-size:14px; }
@@ -30,9 +62,20 @@
   .lodex-brand-loop { width:82%; height:280px; }
   .footer-wordmark strong { font-size:38px; }
   .composer { flex-direction:row; flex-wrap:wrap; align-items:flex-end; }
-  .composer textarea { flex:1 1 calc(100% - 55px); }
+  .composer textarea { flex:1 1 calc(100% - 55px); min-width:0; font-size:17px; }
   .composer .voice-input-button { width:46px; flex:0 0 46px; }
-  .composer > button[type="submit"] { width:100%; }
+  .composer > button[type="submit"] { width:100%; min-height:48px; font-size:15px; }
+  .chat-card { width:100%; height:min(640px,calc(100dvh - 20px)); min-height:500px; }
+  .messages article { max-width:94%; }
+  .messages p { font-size:17px; line-height:1.58; }
+  .chat-title { gap:9px; }
+  .chat-title b { font-size:18px; }
+  .chat-title small { max-width:none; font-size:12px; }
+  .intake-live-form { grid-template-columns:1fr; padding:13px; }
+  .intake-live-full,.intake-live-form>small { grid-column:auto; }
+  .intake-live-field input,.intake-live-field textarea,.intake-review-block textarea,.upload-card>textarea,.fields input,.fields select,.lookup-card input,.support-input { font-size:16px !important; }
+  .intake-review-block { grid-template-columns:1fr; padding:13px; }
+  .upload-card,.schedule-card { width:100%; max-width:100%; }
   .section-back-to-top { margin-top:22px; min-height:44px; }
 }
 @media (prefers-reduced-motion:reduce) { .lodex-brand-loop,.composer .voice-input-button.is-listening { animation:none; } }
