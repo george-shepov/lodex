@@ -25,14 +25,6 @@ export const lzGalleryProjects = [
     "alt": "AI-generated LZ Custom commercial inspiration concept 1"
   },
   {
-    "id": "lz-124",
-    "src": "/inspiration/lz-archive/lz-124.webp",
-    "title": "Installation inspiration 01",
-    "detail": "Measurement, delivery, fitting, and installation concepts",
-    "category": "Installation",
-    "alt": "AI-generated LZ Custom installation inspiration concept 1"
-  },
-  {
     "id": "lz-019",
     "src": "/inspiration/lz-archive/lz-019.webp",
     "title": "Tile & patterns inspiration 01",
@@ -87,14 +79,6 @@ export const lzGalleryProjects = [
     "detail": "Kitchen layouts, cabinetry, and finish combinations",
     "category": "Kitchens",
     "alt": "AI-generated LZ Custom kitchens inspiration concept 3"
-  },
-  {
-    "id": "lz-126",
-    "src": "/inspiration/lz-archive/lz-126.webp",
-    "title": "Painting inspiration 01",
-    "detail": "Interior coating and commercial painting ideas",
-    "category": "Painting",
-    "alt": "AI-generated LZ Custom painting inspiration concept 1"
   },
   {
     "id": "lz-002",
