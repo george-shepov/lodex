@@ -44,6 +44,9 @@ const paymentError = ref('')
 const selectedInspiration = ref(null)
 const galleryFilter = ref('All')
 const galleryVisible = ref(24)
+const galleryLoading = ref(false)
+const gallerySentinel = ref(null)
+const hiddenGallerySources = ref(new Set())
 const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false
 const homeReelPaused = ref(prefersReducedMotion)
 const homeHeroSlideIndex = ref(0)
@@ -53,6 +56,7 @@ const serviceHeroSlideIndex = ref(0)
 const serviceHeroSlides = ref([])
 let homeReelTimer = null
 let serviceReelTimer = null
+let galleryObserver = null
 let presenceTimer = null
 const visitorId = ref('')
 const supportRequest = ref({ name: '', phone: '', message: '' })
@@ -268,8 +272,6 @@ const laserProjects = [
   },
 ]
 
-const inspirationProjects = lzGalleryProjects.slice(0, 12)
-
 function asGallerySlide(project) {
   return { id: project.id, type: 'image', src: project.src, alt: project.alt, title: project.title, eyebrow: project.category, position: 'center center' }
 }
@@ -312,8 +314,10 @@ const activeLegalPage = computed(() => legalPages[currentPath.value.replace(/\/$
 const isHomePage = computed(() => !activeService.value && !isInspirationPage.value && !isAdminPage.value && !activeLegalPage.value)
 const homeHeroSlide = computed(() => homeHeroSlides[homeHeroSlideIndex.value] || homeHeroSlides[0])
 const activeHeroImage = computed(() => serviceHeroSlides.value[serviceHeroSlideIndex.value] || null)
-const galleryCategories = computed(() => ['All', ...new Set(lzGalleryProjects.map(project => project.category))])
-const filteredGalleryProjects = computed(() => galleryFilter.value === 'All' ? lzGalleryProjects : lzGalleryProjects.filter(project => project.category === galleryFilter.value))
+const availableGalleryProjects = computed(() => lzGalleryProjects.filter(project => !hiddenGallerySources.value.has(project.src)))
+const inspirationProjects = computed(() => availableGalleryProjects.value.slice(0, 12))
+const galleryCategories = computed(() => ['All', ...new Set(availableGalleryProjects.value.map(project => project.category))])
+const filteredGalleryProjects = computed(() => galleryFilter.value === 'All' ? availableGalleryProjects.value : availableGalleryProjects.value.filter(project => project.category === galleryFilter.value))
 const visibleGalleryProjects = computed(() => filteredGalleryProjects.value.slice(0, galleryVisible.value))
 const lightboxCollection = computed(() => isInspirationPage.value ? filteredGalleryProjects.value : inspirationProjects)
 const summary = computed(() => messages.value.filter(item => item.role === 'user').map(item => item.text).join('\n'))
@@ -375,17 +379,42 @@ watch(activeService, service => {
     return
   }
   const branded = service.heroImages.map((image, index) => asServiceSlide(service, image, index))
-  const related = lzGalleryProjects.filter(project => service.galleryCategories.includes(project.category)).map(asGallerySlide)
+  const related = availableGalleryProjects.value.filter(project => service.galleryCategories.includes(project.category)).map(asGallerySlide)
   serviceHeroSlides.value = rotateFromStoredPosition([...branded, ...related], `lodex-service-reel-${service.slug}`)
 }, { immediate: true })
 
 watch([homeHeroSlide, homeReelPaused, isHomePage], scheduleHomeHero, { immediate: true })
 watch([activeHeroImage, serviceReelPaused], scheduleServiceHero, { immediate: true })
+watch(isInspirationPage, () => nextTick(observeGallerySentinel), { immediate: true })
 
 function serviceHref(service) { return `/services/${service.slug}` }
 function openInspiration(project) { selectedInspiration.value = project }
 function openInspirationGallery() { navigate('/inspiration') }
-function selectGalleryFilter(category) { galleryFilter.value = category; galleryVisible.value = 24 }
+function hideGalleryImage(project) {
+  const next = new Set(hiddenGallerySources.value)
+  next.add(project.src)
+  hiddenGallerySources.value = next
+}
+function loadMoreGallery() {
+  if (galleryLoading.value || visibleGalleryProjects.value.length >= filteredGalleryProjects.value.length) return
+  galleryLoading.value = true
+  galleryVisible.value = Math.min(galleryVisible.value + 24, filteredGalleryProjects.value.length)
+  nextTick(() => { galleryLoading.value = false; observeGallerySentinel() })
+}
+function observeGallerySentinel() {
+  galleryObserver?.disconnect()
+  galleryObserver = null
+  if (!isInspirationPage.value || !gallerySentinel.value || !('IntersectionObserver' in window)) return
+  galleryObserver = new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting) loadMoreGallery()
+  }, { rootMargin: '700px 0px' })
+  galleryObserver.observe(gallerySentinel.value)
+}
+function selectGalleryFilter(category) {
+  galleryFilter.value = category
+  galleryVisible.value = 24
+  nextTick(observeGallerySentinel)
+}
 function add(role, text, kind = null) {
   messages.value.push({ role, text, ...(kind ? { kind } : {}) })
   nextTick(() => document.querySelector('.messages')?.scrollTo({ top: 99999, behavior: 'smooth' }))
@@ -670,8 +699,8 @@ function onKeydown(event) {
   if (selectedInspiration.value && event.key === 'ArrowRight') moveInspiration(1)
 }
 function onPopState() { currentPath.value = window.location.pathname; sendPresence() }
-onMounted(() => { window.addEventListener('popstate', onPopState); window.addEventListener('keydown', onKeydown); ensureVisitorId(); sendPresence(); presenceTimer = window.setInterval(sendPresence, 25000); handlePaymentReturn() })
-onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); window.removeEventListener('keydown', onKeydown); window.clearTimeout(homeReelTimer); window.clearTimeout(serviceReelTimer); window.clearInterval(presenceTimer); stopVirtualMedia() })
+onMounted(() => { window.addEventListener('popstate', onPopState); window.addEventListener('keydown', onKeydown); ensureVisitorId(); sendPresence(); presenceTimer = window.setInterval(sendPresence, 25000); handlePaymentReturn(); nextTick(observeGallerySentinel) })
+onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); window.removeEventListener('keydown', onKeydown); window.clearTimeout(homeReelTimer); window.clearTimeout(serviceReelTimer); galleryObserver?.disconnect(); window.clearInterval(presenceTimer); stopVirtualMedia() })
 </script>
 
 <template>
@@ -719,16 +748,17 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); wind
       </section>
       <section class="gallery-browser page-width">
         <div class="gallery-toolbar" aria-label="Filter inspiration gallery">
-          <button v-for="category in galleryCategories" :key="category" type="button" :class="{ active: galleryFilter === category }" @click="selectGalleryFilter(category)">{{ category }}<span>{{ category === 'All' ? lzGalleryProjects.length : lzGalleryProjects.filter(project => project.category === category).length }}</span></button>
+          <button v-for="category in galleryCategories" :key="category" type="button" :class="{ active: galleryFilter === category }" @click="selectGalleryFilter(category)">{{ category }}<span>{{ category === 'All' ? availableGalleryProjects.length : availableGalleryProjects.filter(project => project.category === category).length }}</span></button>
         </div>
         <p class="gallery-status">Showing {{ visibleGalleryProjects.length }} of {{ filteredGalleryProjects.length }} concepts</p>
         <div class="archive-grid">
           <figure v-for="project in visibleGalleryProjects" :key="project.id" tabindex="0" role="button" :aria-label="`View ${project.title}`" @click="openInspiration(project)" @keydown.enter="openInspiration(project)" @keydown.space.prevent="openInspiration(project)">
-            <img :src="project.src" :alt="project.alt" loading="lazy" decoding="async"/>
+            <img :src="project.src" :alt="project.alt" loading="lazy" decoding="async" @error="hideGalleryImage(project)"/>
             <figcaption><span>{{ project.category }}</span><b>{{ project.title }}</b></figcaption>
           </figure>
         </div>
-        <button v-if="visibleGalleryProjects.length < filteredGalleryProjects.length" type="button" class="gallery-more" @click="galleryVisible += 24">Show 24 more <span>↘</span></button>
+        <div ref="gallerySentinel" class="gallery-sentinel" aria-hidden="true"></div>
+        <p v-if="galleryLoading" class="gallery-loading">Loading more concepts…</p>
       </section>
       <section class="gallery-cta"><div class="page-width"><p class="eyebrow">Turn inspiration into a real scope</p><h2>Show us the idea and the space you actually have.</h2><button type="button" class="primary-button" @click="goHome('#intake')">Start your project <span>↗</span></button></div></section>
     </template>
@@ -759,7 +789,7 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); wind
         </div>
       </section>
 
-      <section id="inspiration" class="inspiration-section page-width"><div class="section-heading"><div><p class="eyebrow">LZ Custom inspiration · {{ lzGalleryProjects.length }} concepts</p><h2>See what thoughtful work can look like.</h2></div><div class="inspiration-intro"><button type="button" class="text-button" @click="openInspirationGallery">Explore all {{ lzGalleryProjects.length }} concepts →</button></div></div><div class="inspiration-grid"><figure v-for="project in inspirationProjects" :key="project.src" tabindex="0" role="button" :aria-label="`View ${project.title}`" @click="openInspiration(project)" @keydown.enter="openInspiration(project)" @keydown.space.prevent="openInspiration(project)"><img :src="project.src" :alt="project.title" loading="lazy"/><figcaption><b>{{ project.title }}</b><span>{{ project.detail }}</span></figcaption></figure></div><button type="button" class="gallery-more gallery-more-home" @click="openInspirationGallery">Open the complete inspiration archive <span>↗</span></button></section>
+      <section id="inspiration" class="inspiration-section page-width"><div class="section-heading"><div><p class="eyebrow">LZ Custom inspiration · {{ availableGalleryProjects.length }} concepts</p><h2>See what thoughtful work can look like.</h2></div><div class="inspiration-intro"><button type="button" class="text-button" @click="openInspirationGallery">Explore all {{ availableGalleryProjects.length }} concepts →</button></div></div><div class="inspiration-grid"><figure v-for="project in inspirationProjects" :key="project.src" tabindex="0" role="button" :aria-label="`View ${project.title}`" @click="openInspiration(project)" @keydown.enter="openInspiration(project)" @keydown.space.prevent="openInspiration(project)"><img :src="project.src" :alt="project.title" loading="lazy" @error="hideGalleryImage(project)"/><figcaption><b>{{ project.title }}</b><span>{{ project.detail }}</span></figcaption></figure></div><button type="button" class="gallery-more gallery-more-home" @click="openInspirationGallery">Open the complete inspiration archive <span>↗</span></button></section>
 
       <section id="services" class="services-section page-width"><div class="section-heading"><div><p class="eyebrow">LODEX services</p><h2>Renovate, repair, deliver, source, and restore.</h2></div><p>Five clear ways to start. Every service begins with a practical look at scope, access, timing, materials, and the next step.</p></div><div class="service-grid"><a v-for="(service, index) in services" :key="service.slug" class="service-card" :href="serviceHref(service)" @click.prevent="openService(service)"><span>0{{ index + 1 }}</span><h3>{{ service.title }}</h3><p>{{ service.summary }}</p><b>Explore service →</b></a></div></section>
 
