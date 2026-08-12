@@ -28,6 +28,7 @@ def install_fake_ai(monkeypatch: pytest.MonkeyPatch, decision: dict):
     complete_decision = {
         "confidence": "high",
         "recommended_tier": "luna",
+        "target_requirement": "none",
     } | decision
 
     class FakeResponse:
@@ -49,7 +50,12 @@ def install_fake_ai(monkeypatch: pytest.MonkeyPatch, decision: dict):
 def install_fake_ai_sequence(monkeypatch: pytest.MonkeyPatch, decisions: list[dict]):
     calls = []
     remaining = [
-        {"confidence": "high", "recommended_tier": "luna"} | decision
+        {
+            "confidence": "high",
+            "recommended_tier": "luna",
+            "target_requirement": "none",
+        }
+        | decision
         for decision in decisions
     ]
 
@@ -150,6 +156,56 @@ def test_required_questions_are_not_cut_off_after_two_turns():
     assert body["question_kind"] == "required"
     assert "?" in body["reply"]
     assert body["qualification"]["progress"] < 100
+
+
+@pytest.mark.parametrize("access_answer", ['nothing - first floor 80" tv', "nothing"])
+def test_delivery_access_answer_is_not_asked_again(
+    monkeypatch: pytest.MonkeyPatch, access_answer: str
+):
+    conversation = [
+        {
+            "role": "user",
+            "text": "I need an item picked up, delivered, assembled, or installed: a tv",
+        },
+        {
+            "role": "assistant",
+            "text": "What should we know about stairs, doors, parking, elevators, or other delivery access?",
+            "kind": "required",
+        },
+        {"role": "user", "text": access_answer},
+    ]
+    install_fake_ai(
+        monkeypatch,
+        {
+            "covered_required": ["items", "origin_destination", "setup_scope"],
+            "target_requirement": "access",
+            "response_kind": "required_question",
+            "reply": "What should we know about stairs, doors, parking, elevators, or other delivery access?",
+        },
+    )
+
+    body = api_request(
+        "POST",
+        "/api/intake/chat",
+        json={
+            "message": conversation[-1]["text"],
+            "project_summary": "\n".join(
+                turn["text"] for turn in conversation if turn["role"] == "user"
+            ),
+            "service_category": "White-Glove Delivery & Installation",
+            "conversation": conversation,
+        },
+    ).json()
+
+    requirements = {
+        item["id"]: item["covered"]
+        for item in body["qualification"]["requirements"]
+    }
+    assert requirements["access"] is True
+    assert body["ready_to_schedule"] is False
+    assert body["question_kind"] == "required"
+    assert "when" in body["reply"].lower()
+    assert "stairs" not in body["reply"].lower()
 
 
 def test_first_vague_message_can_still_receive_one_forward_question():
