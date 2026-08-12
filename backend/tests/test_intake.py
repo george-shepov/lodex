@@ -296,6 +296,17 @@ def test_property_strategy_starts_on_terra():
     assert body["ai_route"]["reasoning_effort"] == "high"
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "I need furnishings, landscaping, and renovations.",
+        "I need sourcing, yard cleanup, delivery, and assembly.",
+    ],
+)
+def test_natural_multi_service_word_forms_start_on_terra(message: str):
+    assert main.choose_model_tier(message) == "terra"
+
+
 def test_safety_sensitive_scope_starts_on_sol():
     body = api_request(
         "POST",

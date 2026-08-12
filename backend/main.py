@@ -124,11 +124,11 @@ def choose_model_tier(text: str, *, profile_key: str = "", task: str = "qualific
     service_domains = sum(
         bool(re.search(pattern, normalized))
         for pattern in (
-            r"\b(?:furnish|sourc|shopping)\b",
-            r"\b(?:landscap|yard)\b",
-            r"\b(?:renovat|remodel|repair)\b",
-            r"\b(?:clean|restor|pressure wash)\b",
-            r"\b(?:deliver|assembl|install)\b",
+            r"\b(?:furnish(?:e[ds]?|ing(?:s)?)?|sourc(?:e[ds]?|ing)?|shopping)\b",
+            r"\b(?:landscap(?:e[ds]?|ing)?|yards?)\b",
+            r"\b(?:renovat(?:e[ds]?|ing|ions?)|remodel(?:s|ed|ing)?|repair(?:s|ed|ing)?)\b",
+            r"\b(?:clean(?:s|ed|ing)?|restor(?:e[ds]?|ing|ations?)|pressure wash(?:es|ed|ing)?)\b",
+            r"\b(?:deliver(?:s|ed|ing|y|ies)?|assembl(?:e[ds]?|ing|y|ies)|install(?:s|ed|ing|ations?)?)\b",
         )
     )
     if (
