@@ -2,31 +2,12 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import InstallLodex from './components/InstallLodex.vue'
 import { installLodexEnhancements } from './enhancements.js'
+import { withInferredIntakeService } from './intakeServiceInference.mjs'
 import './shadcn.css'
 import './style.css'
 import './virtual.css'
 import './enhancements.css'
 import './admin.css'
-
-function inferIntakeServiceCategory(payload) {
-  if (String(payload?.service_category || '').trim()) return ''
-
-  const userTurns = Array.isArray(payload?.conversation)
-    ? payload.conversation
-        .filter(turn => turn?.role === 'user')
-        .map(turn => turn?.text || '')
-        .join(' ')
-    : ''
-  const text = [payload?.message, payload?.project_summary, userTurns]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase()
-
-  const repairCue = /\b(?:repair(?:s|ed|ing)?|broken|loose|handyman|maintenance|leak(?:s|ed|ing)?|stuck|jammed)\b|\bfix(?:\s*it|es|ed|ing)?\b/i
-  if (repairCue.test(text)) return 'Handyman & Property Maintenance'
-
-  return ''
-}
 
 function installIntakeServiceInference() {
   const nativeFetch = window.fetch.bind(window)
@@ -39,11 +20,11 @@ function installIntakeServiceInference() {
 
     try {
       const payload = JSON.parse(init.body)
-      const inferredService = inferIntakeServiceCategory(payload)
-      if (inferredService) {
+      const enrichedPayload = withInferredIntakeService(payload)
+      if (enrichedPayload !== payload) {
         init = {
           ...init,
-          body: JSON.stringify({ ...payload, service_category: inferredService }),
+          body: JSON.stringify(enrichedPayload),
         }
       }
     } catch {
