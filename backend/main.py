@@ -301,7 +301,7 @@ QUALIFICATION_PROFILES: dict[str, dict[str, Any]] = {
             "items": {"label": "Items involved", "description": "The item type, quantity, or order is identified.", "question": "What items need to be picked up, delivered, assembled, or installed?", "patterns": (r"\bfurniture\b", r"\bbed", r"\bappliance", r"\btv\b", r"\bequipment\b", r"\bdesk\b", r"\bcabinet")},
             "origin_destination": {"label": "Pickup and destination", "description": "The pickup source and destination or a delegated sourcing plan are known enough to coordinate.", "question": "Where are the items coming from, and where do they need to go?", "patterns": (r"\bpick.?up\b", r"\bstore\b", r"\bmarketplace\b", r"\bfacebook\b", r"\bdeliver", r"\bonsite\b", r"\bat the house\b")},
             "setup_scope": {"label": "Assembly or installation scope", "description": "The expected assembly, installation, placement, testing, or debris removal is known.", "question": "Should we assemble, install, place, test, or remove packaging after delivery?", "patterns": (r"\bassembl", r"\binstall", r"\bplace", r"\btest", r"\bpackag", r"\bdebris")},
-            "access": {"label": "Delivery access", "description": "Stairs, elevators, doorways, parking, floor, or other delivery access is described or delegated for onsite review.", "question": "What should we know about stairs, doors, parking, elevators, or other delivery access?", "patterns": (r"\bstairs?\b", r"\belevator\b", r"\bdoor", r"\bparking\b", r"\bground floor\b", r"\bnot sure\b", r"\bcheck (?:it )?onsite\b")},
+            "access": {"label": "Delivery access", "description": "Stairs, elevators, doorways, parking, floor, or other delivery access is described or delegated for onsite review.", "question": "What should we know about stairs, doors, parking, elevators, or other delivery access?", "patterns": (r"\bstairs?\b", r"\belevator\b", r"\bdoor", r"\bparking\b", r"\b(?:first|1st|ground) floor\b", r"\bnot sure\b", r"\bcheck (?:it )?onsite\b")},
             "timing": {"label": "Delivery timing", "description": "The requested timing or flexibility is known.", "question": "When do the items need to be delivered and ready?", "patterns": (r"\basap\b", r"\bimmediately\b", r"\bthis (?:week|month)\b", r"\bby\s+[a-z0-9]", r"\bno rush\b", r"\bflexible timing\b")},
         },
         "extras": ("largest-item measurements", "fragile or high-value handling", "packaging disposal"),
@@ -383,6 +383,30 @@ def fallback_requirement_coverage(payload: IntakeChat, profile: dict[str, Any]) 
     for requirement_id, requirement in profile["requirements"].items():
         if any(re.search(pattern, haystack, re.IGNORECASE) for pattern in requirement["patterns"]):
             covered.add(requirement_id)
+    covered.update(contextual_constraint_coverage(payload, profile))
+    return covered
+
+
+def contextual_constraint_coverage(payload: IntakeChat, profile: dict[str, Any]) -> set[str]:
+    """Treat a direct "none" answer as meaningful only for constraint questions."""
+    constraint_requirements = {"access", "access_safety", "site_constraints"}
+    questions = {
+        re.sub(r"\W+", " ", requirement["question"].lower()).strip(): requirement_id
+        for requirement_id, requirement in profile["requirements"].items()
+        if requirement_id in constraint_requirements
+    }
+    covered: set[str] = set()
+    for previous, current in zip(payload.conversation, payload.conversation[1:]):
+        if previous.role != "assistant" or previous.kind != "required" or current.role != "user":
+            continue
+        normalized_question = re.sub(r"\W+", " ", previous.text.lower()).strip()
+        requirement_id = questions.get(normalized_question)
+        if requirement_id and re.match(
+            r"^\s*(?:no(?:ne|pe)?|nothing|n\s*/?\s*a|not applicable)\b",
+            current.text,
+            re.IGNORECASE,
+        ):
+            covered.add(requirement_id)
     return covered
 
 
@@ -454,6 +478,7 @@ async def ai_qualification_decision(
 The active playbook is {profile['label']}. Decide which required facts are genuinely covered by the full conversation.
 A fact is covered when it is explicit, reasonably inferable, intentionally delegated to LODEX, explicitly flexible, explicitly unknown but suitable for onsite verification, or supported by media notes. Do not reconfirm a covered fact.
 If required facts are missing, ask exactly one concise question that can cover the most important missing fact, preferably combining tightly related missing facts naturally. Required questions have no numeric limit.
+For a required_question, set target_requirement to the single still-missing requirement the question addresses. Never target a requirement included in covered_required. For every other response kind, set target_requirement to "none".
 Only after every required fact is covered may you ask an extra question. Ask an extra only when it materially improves visit preparation, selection, safety, or estimating. Never ask more than two extras total.
 If the customer's latest message asks a side question, answer it directly. A customer question never consumes the extra-question budget and must not be ignored merely to end intake.
 When qualified and no worthwhile extra remains, or the customer clearly says to proceed, produce a decisive handoff with no question and direct them to choose a visit window.
@@ -480,11 +505,15 @@ Never ask for name, phone, email, street address, or appointment time in chat; t
                 "type": "string",
                 "enum": ["required_question", "extra_question", "customer_answer", "handoff"],
             },
+            "target_requirement": {
+                "type": "string",
+                "enum": ["none", *requirements],
+            },
             "reply": {"type": "string"},
             "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
             "recommended_tier": {"type": "string", "enum": ["luna", "terra", "sol"]},
         },
-        "required": ["covered_required", "response_kind", "reply", "confidence", "recommended_tier"],
+        "required": ["covered_required", "response_kind", "target_requirement", "reply", "confidence", "recommended_tier"],
         "additionalProperties": False,
     }
     for escalation_attempt in range(3):
@@ -547,6 +576,7 @@ async def qualification_decision(payload: IntakeChat) -> dict[str, Any]:
     }
     reply = str((decision or {}).get("reply", "")).strip()
     response_kind = str((decision or {}).get("response_kind", ""))
+    target_requirement = str((decision or {}).get("target_requirement", "none"))
     latest_text = payload.message.lower()
     wants_action = any(cue in latest_text for cue in ACTION_CUES)
     is_frustrated = any(cue in latest_text for cue in FRUSTRATION_CUES)
@@ -554,7 +584,11 @@ async def qualification_decision(payload: IntakeChat) -> dict[str, Any]:
 
     if missing:
         next_requirement = requirements[missing[0]]
-        if response_kind != "required_question" or "?" not in reply:
+        if (
+            response_kind != "required_question"
+            or target_requirement not in missing
+            or "?" not in reply
+        ):
             reply = next_requirement["question"]
         return {
             "reply": reply,
