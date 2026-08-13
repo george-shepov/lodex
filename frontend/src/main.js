@@ -4,17 +4,48 @@ import InstallLodex from './components/InstallLodex.vue'
 import { installLodexEnhancements } from './enhancements.js'
 import { withInferredIntakeService } from './intakeServiceInference.mjs'
 import { guardIntakeReply } from './intakeQuestionGuard.mjs'
+import { createUploadAccumulator } from './uploadAccumulator.mjs'
 import './shadcn.css'
 import './style.css'
 import './virtual.css'
 import './enhancements.css'
 import './admin.css'
 
-function installIntakeServiceInference() {
+function installLodexRequestGuards() {
   const nativeFetch = window.fetch.bind(window)
+  const uploadAccumulator = createUploadAccumulator(window.sessionStorage)
 
   window.fetch = async (input, init = {}) => {
     const url = typeof input === 'string' ? input : input?.url || ''
+
+    if (/\/api\/intake\/upload(?:\?|$)/.test(url)) {
+      const response = await nativeFetch(input, init)
+      if (response.ok) {
+        try {
+          const data = await response.clone().json()
+          const description = init?.body instanceof FormData ? init.body.get('description') || '' : ''
+          uploadAccumulator.remember({ ...data, description })
+        } catch {
+          // The upload itself succeeded; tracking failure must not break intake.
+        }
+      }
+      return response
+    }
+
+    if (/\/api\/appointments\/request(?:\?|$)/.test(url) && typeof init?.body === 'string') {
+      let tracked = false
+      try {
+        const payload = JSON.parse(init.body)
+        init = { ...init, body: JSON.stringify(uploadAccumulator.enrich(payload)) }
+        tracked = true
+      } catch {
+        // Preserve the original appointment request if it is not JSON.
+      }
+      const response = await nativeFetch(input, init)
+      if (tracked && response.ok) uploadAccumulator.clear()
+      return response
+    }
+
     if (!/\/api\/intake\/chat(?:\?|$)/.test(url) || typeof init?.body !== 'string') {
       return nativeFetch(input, init)
     }
@@ -57,7 +88,7 @@ function installIntakeServiceInference() {
   }
 }
 
-installIntakeServiceInference()
+installLodexRequestGuards()
 createApp(App).mount('#app')
 installLodexEnhancements()
 

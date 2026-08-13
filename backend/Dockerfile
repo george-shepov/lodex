@@ -6,4 +6,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN mkdir -p /app/data/uploads
 EXPOSE 8015
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8015"]
+CMD ["uvicorn", "admin_media:app", "--host", "0.0.0.0", "--port", "8015"]

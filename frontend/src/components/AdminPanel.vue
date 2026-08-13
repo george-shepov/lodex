@@ -10,6 +10,7 @@ const error = ref('')
 const overview = ref({ active_visitors: [], project_requests: [], support_requests: [], counts: {} })
 const alertsEnabled = ref(false)
 const selectedProject = ref(null)
+const selectedMedia = ref(null)
 let eventSocket = null
 let refreshTimer = null
 let socketPing = null
@@ -61,6 +62,7 @@ async function logout() {
   try { await api('/api/admin/session', { method: 'DELETE' }) } catch {}
   disconnectEvents()
   authenticated.value = false
+  selectedMedia.value = null
   overview.value = { active_visitors: [], project_requests: [], support_requests: [], counts: {} }
 }
 
@@ -167,13 +169,41 @@ function joinRoom(roomCode) {
   emit('join-room', roomCode)
 }
 
+function mediaUrl(file) {
+  return `/api/admin/uploads/${encodeURIComponent(file.upload_id)}`
+}
+
+function isImage(file) {
+  return String(file?.media_type || '').startsWith('image/')
+}
+
+function isVideo(file) {
+  return String(file?.media_type || '').startsWith('video/')
+}
+
+function openMedia(file) {
+  selectedMedia.value = file
+}
+
+function closeMedia() {
+  selectedMedia.value = null
+}
+
+function onKeydown(event) {
+  if (event.key === 'Escape' && selectedMedia.value) closeMedia()
+}
+
 function formatDate(value) {
   if (!value) return '—'
   return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
-onMounted(checkSession)
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+  checkSession()
+})
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
   disconnectEvents()
   window.clearInterval(refreshTimer)
   if (audioContext) audioContext.close()
@@ -227,12 +257,28 @@ onBeforeUnmount(() => {
             <div class="admin-project-meta"><span><b>Phone</b>{{ request.phone }}</span><span><b>Email</b>{{ request.email || '—' }}</span><span><b>Requested visit</b>{{ request.preferred_date }} · {{ request.preferred_time }}</span><span><b>Payment</b>{{ request.payment_status }}</span></div>
             <p class="admin-summary">{{ request.project_summary }}</p>
             <details v-if="request.conversation?.length"><summary>Open complete conversation ({{ request.conversation.length }})</summary><div class="admin-conversation"><p v-for="(message, index) in request.conversation" :key="index" :class="message.role"><b>{{ message.role === 'user' ? request.name : 'LODEX' }}</b>{{ message.text }}</p></div></details>
-            <div class="admin-project-actions"><button type="button" class="outline-button" @click="selectedProject = selectedProject === request.project_code ? null : request.project_code">{{ selectedProject === request.project_code ? 'Hide files' : `Files (${request.uploads?.length || 0})` }}</button><button type="button" class="outline-button" @click="joinRoom(request.project_code)">Join video room</button><select :value="request.status" @change="updateStatus(request, $event.target.value)"><option value="requested">Requested</option><option value="contacted">Contacted</option><option value="scheduled">Scheduled</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div>
-            <ul v-if="selectedProject === request.project_code" class="admin-files"><li v-for="file in request.uploads" :key="file.upload_id"><b>{{ file.filename }}</b><span>{{ file.description || file.media_type }}</span></li><li v-if="!request.uploads?.length">No files attached.</li></ul>
+            <div class="admin-project-actions"><button type="button" class="outline-button" @click="selectedProject = selectedProject === request.project_code ? null : request.project_code">{{ selectedProject === request.project_code ? 'Hide files' : `Photos & files (${request.uploads?.length || 0})` }}</button><button type="button" class="outline-button" @click="joinRoom(request.project_code)">Join video room</button><select :value="request.status" @change="updateStatus(request, $event.target.value)"><option value="requested">Requested</option><option value="contacted">Contacted</option><option value="scheduled">Scheduled</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div>
+            <div v-if="selectedProject === request.project_code" class="admin-files">
+              <button v-for="file in request.uploads" :key="file.upload_id" type="button" class="admin-file-tile" :aria-label="`Open ${file.filename || 'customer upload'}`" @click="openMedia(file)">
+                <img v-if="isImage(file)" class="admin-file-preview" :src="mediaUrl(file)" :alt="file.description || file.filename || 'Customer upload'" loading="lazy" />
+                <video v-else-if="isVideo(file)" class="admin-file-preview" :src="mediaUrl(file)" muted playsinline preload="metadata"></video>
+                <span v-else class="admin-file-placeholder">FILE</span>
+                <small>{{ file.description || (isVideo(file) ? 'Video' : isImage(file) ? 'Photo' : 'Attachment') }}</small>
+              </button>
+              <p v-if="!request.uploads?.length" class="admin-file-empty">No files attached.</p>
+            </div>
           </article>
         </div>
         <p v-else class="admin-empty">No project requests have been submitted.</p>
       </section>
     </template>
+
+    <div v-if="selectedMedia" class="admin-media-modal" role="dialog" aria-modal="true" :aria-label="selectedMedia.filename || 'Customer upload'" @click.self="closeMedia">
+      <button type="button" class="admin-media-close" aria-label="Close full-screen media" @click="closeMedia">×</button>
+      <img v-if="isImage(selectedMedia)" :src="mediaUrl(selectedMedia)" :alt="selectedMedia.description || selectedMedia.filename || 'Customer upload'" />
+      <video v-else-if="isVideo(selectedMedia)" :src="mediaUrl(selectedMedia)" controls autoplay playsinline></video>
+      <div v-else class="admin-media-unsupported">Preview unavailable for this file type.</div>
+      <div class="admin-media-caption"><b>{{ selectedMedia.filename || 'Customer upload' }}</b><span>{{ selectedMedia.description || selectedMedia.media_type }}</span></div>
+    </div>
   </section>
 </template>
