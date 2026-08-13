@@ -5,6 +5,8 @@ import { installLodexEnhancements } from './enhancements.js'
 import { withInferredIntakeService } from './intakeServiceInference.mjs'
 import { guardIntakeReply } from './intakeQuestionGuard.mjs'
 import { createUploadAccumulator } from './uploadAccumulator.mjs'
+import { lzGalleryProjects } from './lzGallery'
+import { applyGalleryCuration } from './galleryCuration.mjs'
 import './shadcn.css'
 import './style.css'
 import './virtual.css'
@@ -88,6 +90,7 @@ function installLodexRequestGuards() {
   }
 }
 
+applyGalleryCuration(lzGalleryProjects)
 installLodexRequestGuards()
 createApp(App).mount('#app')
 installLodexEnhancements()
