@@ -319,7 +319,7 @@ const inspirationProjects = computed(() => availableGalleryProjects.value.slice(
 const galleryCategories = computed(() => ['All', ...new Set(availableGalleryProjects.value.map(project => project.category))])
 const filteredGalleryProjects = computed(() => galleryFilter.value === 'All' ? availableGalleryProjects.value : availableGalleryProjects.value.filter(project => project.category === galleryFilter.value))
 const visibleGalleryProjects = computed(() => filteredGalleryProjects.value.slice(0, galleryVisible.value))
-const lightboxCollection = computed(() => isInspirationPage.value ? filteredGalleryProjects.value : inspirationProjects)
+const lightboxCollection = computed(() => isInspirationPage.value ? filteredGalleryProjects.value : inspirationProjects.value)
 const summary = computed(() => messages.value.filter(item => item.role === 'user').map(item => item.text).join('\n'))
 const hasCustomerMessage = computed(() => messages.value.some(item => item.role === 'user'))
 const scopePercent = computed(() => agreed.value ? 100 : qualification.value.progress || 0)
@@ -511,7 +511,7 @@ async function book() {
   paymentError.value = ''
   try {
     const uploads = uploaded.value ? [{ upload_id: uploaded.value.upload_id, filename: uploaded.value.filename, media_type: uploaded.value.media_type, description: description.value }] : []
-    const conversation = messages.value.slice(-24).map(item => ({ role: item.role, text: item.text, ...(item.kind ? { kind: item.kind } : {}) }))
+    const conversation = messages.value.slice(-24).map(item => ({ role: item.role, text: item.text, ...(item.kind ? { kind } : {}) }))
     const response = await fetch('/api/appointments/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...appointment.value, project_summary: summary.value || 'Customer requested an in-person meet-and-greet.', service_category: selectedService.value?.title || 'General inquiry', uploads, conversation, assumptions_confirmed: agreed.value, intake_ready: qualification.value.qualified }) })
     const data = await readApiResponse(response, 'Could not request appointment.')
     notice.value = data.message
