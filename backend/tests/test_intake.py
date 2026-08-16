@@ -225,6 +225,40 @@ def test_first_vague_message_can_still_receive_one_forward_question():
     assert body["qualification"]["progress"] == 50
 
 
+@pytest.mark.parametrize("priority", ["cost", "speed", "durability", "appearance"])
+def test_general_priority_answer_is_covered_without_repeating_question(priority: str):
+    priority_question = "What matters most—cost, speed, durability, appearance, or something else?"
+    conversation = [
+        {"role": "user", "text": "I need remodeling in a home"},
+        {"role": "assistant", "text": "Which items, rooms, or areas are involved?", "kind": "required"},
+        {"role": "user", "text": "painting, securing and replacing small doors, fixing mirror"},
+        {"role": "user", "text": "kitchen, bathroom, bedroom, living room"},
+        {"role": "assistant", "text": priority_question, "kind": "required"},
+        {"role": "user", "text": priority},
+    ]
+
+    body = api_request(
+        "POST",
+        "/api/intake/chat",
+        json={
+            "message": conversation[-1]["text"],
+            "project_summary": "\n".join(
+                turn["text"] for turn in conversation if turn["role"] == "user"
+            ),
+            "conversation": conversation,
+        },
+    ).json()
+
+    requirements = {
+        item["id"]: item["covered"]
+        for item in body["qualification"]["requirements"]
+    }
+    assert body["qualification"]["profile"] == "general"
+    assert requirements["priority"] is True
+    assert body["reply"] != priority_question
+    assert "what matters most" not in body["reply"].lower()
+
+
 def test_qualified_lead_can_receive_two_useful_extra_questions(monkeypatch: pytest.MonkeyPatch):
     all_required = ["items_outcome", "quantity_spaces", "spending_rule", "acceptance_flexibility", "fulfillment"]
     captured = install_fake_ai(
