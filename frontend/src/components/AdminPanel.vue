@@ -9,7 +9,6 @@ const loading = ref(true)
 const error = ref('')
 const overview = ref({ active_visitors: [], project_requests: [], support_requests: [], counts: {} })
 const alertsEnabled = ref(false)
-const selectedProject = ref(null)
 const selectedMedia = ref(null)
 let eventSocket = null
 let refreshTimer = null
@@ -256,17 +255,19 @@ onBeforeUnmount(() => {
             <div class="admin-project-top"><div><span>{{ request.project_code }} · {{ request.status }}</span><h3>{{ request.name }} — {{ request.service_category }}</h3><p>{{ request.address }}</p></div><small>{{ formatDate(request.created_at) }}</small></div>
             <div class="admin-project-meta"><span><b>Phone</b>{{ request.phone }}</span><span><b>Email</b>{{ request.email || '—' }}</span><span><b>Requested visit</b>{{ request.preferred_date }} · {{ request.preferred_time }}</span><span><b>Payment</b>{{ request.payment_status }}</span></div>
             <p class="admin-summary">{{ request.project_summary }}</p>
+            <section v-if="request.uploads?.length" class="admin-attachments" :aria-label="`Customer photos and files for ${request.project_code}`">
+              <div class="admin-attachments-heading"><b>Customer photos & files</b><span>{{ request.uploads.length }}</span></div>
+              <div class="admin-files">
+                <button v-for="file in request.uploads" :key="file.upload_id" type="button" class="admin-file-tile" :aria-label="`Open ${file.filename || 'customer upload'}`" @click="openMedia(file)">
+                  <img v-if="isImage(file)" class="admin-file-preview" :src="mediaUrl(file)" :alt="file.description || file.filename || 'Customer upload'" loading="lazy" />
+                  <video v-else-if="isVideo(file)" class="admin-file-preview" :src="mediaUrl(file)" muted playsinline preload="metadata"></video>
+                  <span v-else class="admin-file-placeholder">FILE</span>
+                  <small>{{ file.description || file.filename || (isVideo(file) ? 'Video' : isImage(file) ? 'Photo' : 'Attachment') }}</small>
+                </button>
+              </div>
+            </section>
             <details v-if="request.conversation?.length"><summary>Open complete conversation ({{ request.conversation.length }})</summary><div class="admin-conversation"><p v-for="(message, index) in request.conversation" :key="index" :class="message.role"><b>{{ message.role === 'user' ? request.name : 'LODEX' }}</b>{{ message.text }}</p></div></details>
-            <div class="admin-project-actions"><button type="button" class="outline-button" @click="selectedProject = selectedProject === request.project_code ? null : request.project_code">{{ selectedProject === request.project_code ? 'Hide files' : `Photos & files (${request.uploads?.length || 0})` }}</button><button type="button" class="outline-button" @click="joinRoom(request.project_code)">Join video room</button><select :value="request.status" @change="updateStatus(request, $event.target.value)"><option value="requested">Requested</option><option value="contacted">Contacted</option><option value="scheduled">Scheduled</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div>
-            <div v-if="selectedProject === request.project_code" class="admin-files">
-              <button v-for="file in request.uploads" :key="file.upload_id" type="button" class="admin-file-tile" :aria-label="`Open ${file.filename || 'customer upload'}`" @click="openMedia(file)">
-                <img v-if="isImage(file)" class="admin-file-preview" :src="mediaUrl(file)" :alt="file.description || file.filename || 'Customer upload'" loading="lazy" />
-                <video v-else-if="isVideo(file)" class="admin-file-preview" :src="mediaUrl(file)" muted playsinline preload="metadata"></video>
-                <span v-else class="admin-file-placeholder">FILE</span>
-                <small>{{ file.description || (isVideo(file) ? 'Video' : isImage(file) ? 'Photo' : 'Attachment') }}</small>
-              </button>
-              <p v-if="!request.uploads?.length" class="admin-file-empty">No files attached.</p>
-            </div>
+            <div class="admin-project-actions"><button type="button" class="outline-button" @click="joinRoom(request.project_code)">Join video room</button><select :value="request.status" @change="updateStatus(request, $event.target.value)"><option value="requested">Requested</option><option value="contacted">Contacted</option><option value="scheduled">Scheduled</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div>
           </article>
         </div>
         <p v-else class="admin-empty">No project requests have been submitted.</p>
@@ -282,3 +283,34 @@ onBeforeUnmount(() => {
     </div>
   </section>
 </template>
+
+<style scoped>
+.admin-attachments {
+  margin: 14px 0;
+  padding: 13px;
+  border: 1px solid rgba(210, 162, 84, 0.35);
+  border-radius: 12px;
+  background: #111f21;
+}
+
+.admin-attachments-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: #edc57b;
+  font-size: 11px;
+}
+
+.admin-attachments-heading span {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #d2a254;
+  color: #101719;
+  font-weight: 900;
+}
+</style>
