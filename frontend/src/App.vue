@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import packageMetadata from '../package.json'
 import { lzGalleryProjects } from './lzGallery'
 import AdminPanel from './components/AdminPanel.vue'
+import { serializeConversation } from './conversationPayload.mjs'
 
 const phone = '(440) 601-8001'
 const phoneHref = 'tel:+14406018001'
@@ -489,7 +490,7 @@ async function send() {
   add('user', text)
   sending.value = true
   try {
-    const conversation = messages.value.slice(-24).map(item => ({ role: item.role, text: item.text, ...(item.kind ? { kind: item.kind } : {}) }))
+    const conversation = serializeConversation(messages.value)
     const response = await fetch('/api/intake/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, project_summary: summary.value, media_notes: uploaded.value ? `${uploaded.value.filename}: ${description.value}` : '', service_category: selectedService.value?.title || '', conversation }) })
     const data = await readApiResponse(response, 'Unable to continue the scope review.')
     add('assistant', data.reply, data.question_kind)
@@ -511,7 +512,7 @@ async function book() {
   paymentError.value = ''
   try {
     const uploads = uploaded.value ? [{ upload_id: uploaded.value.upload_id, filename: uploaded.value.filename, media_type: uploaded.value.media_type, description: description.value }] : []
-    const conversation = messages.value.slice(-24).map(item => ({ role: item.role, text: item.text, ...(item.kind ? { kind } : {}) }))
+    const conversation = serializeConversation(messages.value)
     const response = await fetch('/api/appointments/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...appointment.value, project_summary: summary.value || 'Customer requested an in-person meet-and-greet.', service_category: selectedService.value?.title || 'General inquiry', uploads, conversation, assumptions_confirmed: agreed.value, intake_ready: qualification.value.qualified }) })
     const data = await readApiResponse(response, 'Could not request appointment.')
     notice.value = data.message
