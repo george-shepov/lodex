@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test:intake": "node tests/intakeServiceInference.test.mjs && node tests/intakeQuestionGuard.test.mjs && node tests/intakeFormAssistant.test.mjs && node tests/uploadAccumulator.test.mjs && node tests/galleryCuration.test.mjs",
+    "test:intake": "node tests/intakeServiceInference.test.mjs && node tests/intakeQuestionGuard.test.mjs && node tests/intakeFormAssistant.test.mjs && node tests/uploadAccumulator.test.mjs && node tests/conversationPayload.test.mjs && node tests/galleryCuration.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
