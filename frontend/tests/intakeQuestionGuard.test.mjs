@@ -18,9 +18,9 @@ const secondAttempt = guardIntakeReply(
 )
 
 assert.notEqual(normalizeQuestion(secondAttempt.reply), normalizeQuestion(repeatedOutcome))
-assert.equal(secondAttempt.ready_to_schedule, false)
-assert.equal(secondAttempt.question_kind, 'required')
-assert.ok(secondAttempt.reply.includes('?'))
+assert.equal(secondAttempt.ready_to_schedule, true)
+assert.equal(secondAttempt.question_kind, 'handoff')
+assert.ok(!secondAttempt.reply.includes('?'))
 
 const thirdAttempt = guardIntakeReply(
   {
@@ -80,5 +80,49 @@ const distinctQuestion = guardIntakeReply(
 )
 
 assert.equal(distinctQuestion.reply, 'When would you like it done?')
+
+const genericQuestion = 'What important detail have we not captured yet that would help us prepare for the visit?'
+const concreteConversation = [
+  { role: 'user', text: 'CONCRETE' },
+  { role: 'assistant', text: 'What should we find or furnish first?', kind: 'required' },
+  { role: 'user', text: 'CONCRETE SLAB' },
+  { role: 'assistant', text: genericQuestion, kind: 'extra' },
+  { role: 'user', text: 'IDK' },
+]
+
+const declinedDetail = guardIntakeReply(
+  { message: 'IDK', conversation: concreteConversation },
+  { reply: genericQuestion, ready_to_schedule: false, question_kind: 'extra' },
+)
+assert.equal(declinedDetail.ready_to_schedule, true)
+assert.equal(declinedDetail.question_kind, 'handoff')
+assert.ok(!declinedDetail.reply.includes('?'))
+
+const exactGenericRepeat = guardIntakeReply(
+  {
+    message: 'something',
+    conversation: [
+      ...concreteConversation.slice(0, -1),
+      { role: 'user', text: 'something' },
+    ],
+  },
+  { reply: genericQuestion, ready_to_schedule: false, question_kind: 'extra' },
+)
+assert.equal(exactGenericRepeat.ready_to_schedule, true)
+assert.equal(exactGenericRepeat.question_kind, 'handoff')
+
+const frustratedCustomer = guardIntakeReply(
+  {
+    message: 'YOU ASKING ME THE SAME QUESTION AGAIN?!',
+    conversation: [
+      ...concreteConversation.slice(0, -1),
+      { role: 'user', text: 'YOU ASKING ME THE SAME QUESTION AGAIN?!' },
+    ],
+  },
+  { reply: genericQuestion, ready_to_schedule: false, question_kind: 'extra' },
+)
+assert.equal(frustratedCustomer.ready_to_schedule, true)
+assert.equal(frustratedCustomer.question_kind, 'handoff')
+assert.ok(!frustratedCustomer.reply.includes('?'))
 
 console.log('intake question repetition guard checks passed')
