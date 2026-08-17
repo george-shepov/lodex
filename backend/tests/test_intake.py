@@ -106,7 +106,7 @@ def test_qualified_property_lead_moves_to_visit_after_required_facts_are_covered
     assert body["qualification"]["progress"] == 100
 
 
-def test_frustration_does_not_skip_a_required_fulfillment_fact():
+def test_customer_telling_intake_to_stop_moves_to_visit():
     conversation = [
         {"role": "user", "text": "I need inexpensive used beds, tables, chairs, and lamps for three rooms. Free if decent."},
         {"role": "assistant", "text": "When should it be ready, and should we handle delivery and setup?", "kind": "required"},
@@ -125,9 +125,9 @@ def test_frustration_does_not_skip_a_required_fulfillment_fact():
     )
 
     body = response.json()
-    assert body["ready_to_schedule"] is False
-    assert body["question_kind"] == "required"
-    assert "?" in body["reply"]
+    assert body["ready_to_schedule"] is True
+    assert body["question_kind"] == "handoff"
+    assert "?" not in body["reply"]
     assert body["qualification"]["progress"] == 80
 
 
@@ -337,6 +337,82 @@ def test_customer_side_question_is_answered_without_consuming_extra_budget(monke
     assert body["ready_to_schedule"] is False
     assert body["question_kind"] == "answer"
     assert "card" in body["reply"].lower()
+
+
+@pytest.mark.parametrize("answer", ["IDK", "NOTHING", "I don't know", "That's all"])
+def test_customer_declining_more_detail_moves_to_visit(
+    monkeypatch: pytest.MonkeyPatch, answer: str
+):
+    install_fake_ai(
+        monkeypatch,
+        {
+            "covered_required": ["items_outcome"],
+            "response_kind": "required_question",
+            "target_requirement": "quantity_spaces",
+            "reply": "How many concrete slabs are involved?",
+        },
+    )
+    conversation = [
+        {"role": "user", "text": "I need help finding, picking up, or sourcing: CONCRETE"},
+        {"role": "assistant", "text": "What should we find or furnish first?", "kind": "required"},
+        {"role": "user", "text": "CONCRETE SLAB"},
+        {
+            "role": "assistant",
+            "text": "What important detail have we not captured yet that would help us prepare for the visit?",
+            "kind": "extra",
+        },
+        {"role": "user", "text": answer},
+    ]
+
+    body = api_request(
+        "POST",
+        "/api/intake/chat",
+        json={
+            "message": answer,
+            "project_summary": "CONCRETE\nCONCRETE SLAB",
+            "service_category": "Shopping, Sourcing & Procurement",
+            "conversation": conversation,
+        },
+    ).json()
+
+    assert body["ready_to_schedule"] is True
+    assert body["question_kind"] == "handoff"
+    assert "?" not in body["reply"]
+
+
+def test_customer_complaining_about_same_question_moves_to_visit(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    install_fake_ai(
+        monkeypatch,
+        {
+            "covered_required": ["items_outcome"],
+            "response_kind": "required_question",
+            "target_requirement": "quantity_spaces",
+            "reply": "How many concrete slabs are involved?",
+        },
+    )
+    message = "YOU ASKING ME THE SAME QUESTION AGAIN?!"
+    body = api_request(
+        "POST",
+        "/api/intake/chat",
+        json={
+            "message": message,
+            "project_summary": "CONCRETE\nCONCRETE SLAB",
+            "service_category": "Shopping, Sourcing & Procurement",
+            "conversation": [
+                {"role": "user", "text": "CONCRETE"},
+                {"role": "assistant", "text": "What should we find or furnish first?", "kind": "required"},
+                {"role": "user", "text": "CONCRETE SLAB"},
+                {"role": "assistant", "text": "What important detail have we not captured yet that would help us prepare for the visit?", "kind": "extra"},
+                {"role": "user", "text": message},
+            ],
+        },
+    ).json()
+
+    assert body["ready_to_schedule"] is True
+    assert body["question_kind"] == "handoff"
+    assert "?" not in body["reply"]
 
 
 def test_normal_intake_uses_luna_with_medium_reasoning(monkeypatch: pytest.MonkeyPatch):
