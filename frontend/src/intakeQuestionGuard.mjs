@@ -40,6 +40,17 @@ export function rephraseRepeatedQuestion(text, topic = questionTopic(text)) {
   return variants[topic] || 'What important detail have we not captured yet that would help us prepare for the visit?'
 }
 
+export function customerWantsHandoff(text, previousQuestion = null) {
+  const value = String(text || '').trim()
+  if (/\b(?:same question|asking me the same|asked me already|how many times|stop asking|stop confirming)\b/i.test(value)) return true
+  if (/^(?:that['’]?s\s+all|no\s+more(?:\s+details?)?|nothing\s+else)[\s.!?]*$/i.test(value)) return true
+  if (!/^(?:i\s*(?:do\s*n['’]?t|don['’]?t)\s*know|idk|not\s+sure|nothing)[\s.!?]*$/i.test(value)) return false
+
+  const priorText = String(previousQuestion?.text || '')
+  return previousQuestion?.kind === 'extra'
+    || /\b(?:important detail|anything else)\b/i.test(priorText)
+}
+
 export function guardIntakeReply(requestPayload, responsePayload) {
   if (!responsePayload || !['required', 'extra'].includes(responsePayload.question_kind)) {
     return responsePayload
@@ -48,8 +59,22 @@ export function guardIntakeReply(requestPayload, responsePayload) {
   const reply = String(responsePayload.reply || '').trim()
   if (!reply.includes('?')) return responsePayload
 
-  const priorQuestions = Array.isArray(requestPayload?.conversation)
-    ? requestPayload.conversation
+  const conversation = Array.isArray(requestPayload?.conversation) ? requestPayload.conversation : []
+  const latestCustomerMessage = [...conversation].reverse().find(turn => turn?.role === 'user')?.text
+    || requestPayload?.message
+  const previousQuestion = [...conversation].reverse().find(turn => turn?.role === 'assistant' && String(turn?.text || '').includes('?'))
+
+  if (customerWantsHandoff(latestCustomerMessage, previousQuestion)) {
+    return {
+      ...responsePayload,
+      reply: "That's enough to prepare for a first visit. Choose a preferred visit window below, and we can verify the remaining details onsite.",
+      ready_to_schedule: true,
+      question_kind: 'handoff',
+    }
+  }
+
+  const priorQuestions = conversation.length
+    ? conversation
         .filter(turn => turn?.role === 'assistant' && String(turn?.text || '').includes('?'))
         .map(turn => String(turn.text).trim())
     : []
@@ -63,7 +88,7 @@ export function guardIntakeReply(requestPayload, responsePayload) {
     ? priorQuestions.filter(question => questionTopic(question) === topic).length
     : 0
 
-  if (exactPrior >= 2 || (topic && sameTopicPrior >= 2)) {
+  if (exactPrior >= 1 || (topic && sameTopicPrior >= 2)) {
     return {
       ...responsePayload,
       reply: "I won't make you repeat yourself. We can verify that detail during the visit—choose a preferred visit window below.",
@@ -72,10 +97,15 @@ export function guardIntakeReply(requestPayload, responsePayload) {
     }
   }
 
-  if (exactPrior >= 1 || (topic && sameTopicPrior >= 1)) {
+  if (topic && sameTopicPrior >= 1) {
     let rephrased = rephraseRepeatedQuestion(reply, topic)
     if (normalizeQuestion(rephrased) === normalized) {
-      rephrased = 'What important detail have we not captured yet that would help us prepare for the visit?'
+      return {
+        ...responsePayload,
+        reply: "I won't make you repeat yourself. We can verify that detail during the visit—choose a preferred visit window below.",
+        ready_to_schedule: true,
+        question_kind: 'handoff',
+      }
     }
     return {
       ...responsePayload,
