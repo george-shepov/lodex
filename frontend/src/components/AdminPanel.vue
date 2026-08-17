@@ -148,7 +148,7 @@ function notifyOwner(event) {
       : `${event.payload.project_code || ''} ${event.payload.service_category || ''}`.trim()
   beep(event.type === 'support.requested' ? 920 : 680, event.type === 'support.requested' ? 0.28 : 0.16)
   if (alertsEnabled.value && 'Notification' in window && Notification.permission === 'granted') {
-    new Notification(titles[event.type], { body, icon: '/lodex-icon.svg', tag: event.type === 'visitor.entered' ? 'lodex-visitor' : `${event.type}-${Date.now()}` })
+    new Notification(titles[event.type], { body, icon: '/lodex-icon-192.png', tag: event.type === 'visitor.entered' ? 'lodex-visitor' : `${event.type}-${Date.now()}` })
   }
 }
 
@@ -213,7 +213,7 @@ onBeforeUnmount(() => {
   <section class="admin-shell">
     <div v-if="loading" class="admin-login"><p>Opening the LODEX owner dashboard…</p></div>
     <form v-else-if="!authenticated" class="admin-login" @submit.prevent="login">
-      <img src="/lodex-logo-gold.svg" alt="LODEX" />
+      <img src="/lodex-logo-home-business.webp" alt="LODEX Home & Business Services" />
       <p class="eyebrow">Owner access</p>
       <h1>Projects, visitors and live support.</h1>
       <p>Use the same administrator token as the Giorgiy Operations Center. It is exchanged for a private, secure session cookie.</p>

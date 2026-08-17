@@ -11,7 +11,13 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'script',
-      includeAssets: ['lodex-icon.svg'],
+      includeAssets: [
+        'favicon-32x32.png',
+        'apple-touch-icon.png',
+        'lodex-icon-192.png',
+        'lodex-icon-512.png',
+        'lodex-icon-maskable-512.png',
+      ],
       manifest: {
         name: 'LODEX Residential & Commercial Services',
         short_name: 'LODEX',
@@ -25,10 +31,22 @@ export default defineConfig({
         categories: ['business', 'productivity', 'lifestyle'],
         icons: [
           {
-            src: '/lodex-icon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'any maskable',
+            src: '/lodex-icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/lodex-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/lodex-icon-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
           },
         ],
       },
