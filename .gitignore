@@ -3,6 +3,7 @@
 .lodex-db.env
 __pycache__/
 *.py[cod]
+.venv/
 data/
 frontend/node_modules/
 frontend/dist/

@@ -131,6 +131,35 @@ def test_customer_telling_intake_to_stop_moves_to_visit():
     assert body["qualification"]["progress"] == 80
 
 
+@pytest.mark.parametrize(
+    ("segment", "customer_type", "expected_profile", "expected_question_text"),
+    [
+        ("business", "individual landlord", "business", "property or business"),
+        ("enterprise", "property-management company", "enterprise", "locations or units"),
+    ],
+)
+def test_segment_selection_uses_relevant_intake_playbook(
+    segment, customer_type, expected_profile, expected_question_text
+):
+    response = api_request(
+        "POST",
+        "/api/intake/chat",
+        json={
+            "message": "I need help planning this work.",
+            "project_summary": "I need help planning this work.",
+            "service_category": "General inquiry",
+            "customer_segment": segment,
+            "customer_type": customer_type,
+            "conversation": [{"role": "user", "text": "I need help planning this work."}],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["qualification"]["profile"] == expected_profile
+    assert expected_question_text in body["reply"].lower()
+
+
 def test_required_questions_are_not_cut_off_after_two_turns():
     conversation = [
         {"role": "user", "text": "I need rust cleaned from a metal gate."},

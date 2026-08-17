@@ -21,6 +21,14 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
+import distance
+from pricing import (
+    calculate_visit_pricing,
+    classify_customer_segment,
+    normalize_project_size,
+    segment_from_project,
+)
+
 BUSINESS_NAME = os.getenv("BUSINESS_NAME", "LODEX Construction Maintenance and Repair")
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "data/uploads"))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -71,6 +79,9 @@ class IntakeChat(BaseModel):
     project_summary: str = ""
     media_notes: str = ""
     service_category: str = Field(default="", max_length=120)
+    customer_segment: Literal["home", "business", "enterprise"] | None = None
+    customer_type: str | None = Field(default=None, max_length=120)
+    project_size_class: Literal["small", "several", "major"] | None = None
     conversation: list[ConversationTurn] = Field(default_factory=list, max_length=24)
 
 
@@ -83,6 +94,9 @@ class AppointmentRequest(BaseModel):
     preferred_time: str
     project_summary: str = Field(min_length=5, max_length=6000)
     service_category: str = Field(default="General inquiry", max_length=120)
+    customer_segment: Literal["home", "business", "enterprise"] | None = None
+    customer_type: str | None = Field(default=None, max_length=120)
+    project_size_class: Literal["small", "several", "major"] | None = None
     uploads: list[dict] = Field(default_factory=list)
     conversation: list[ConversationTurn] = Field(default_factory=list, max_length=24)
     assumptions_confirmed: bool
@@ -313,6 +327,13 @@ def public_project_record(record: dict[str, Any]) -> dict[str, Any]:
         "preferred_time": record.get("preferred_time", ""),
         "project_summary": record.get("project_summary", ""),
         "service_category": record.get("service_category", "General inquiry"),
+        "customer_segment": record.get("customer_segment"),
+        "customer_type": record.get("customer_type"),
+        "project_size_class": record.get("project_size_class"),
+        "distance_miles": record.get("distance_miles"),
+        "visit_fee_cents": record.get("visit_fee_cents"),
+        "visit_fee_label": record.get("visit_fee_label"),
+        "pricing_rule": record.get("pricing_rule"),
         "uploads": record.get("uploads", []),
         "conversation": record.get("conversation", []),
         "assumptions_confirmed": bool(record.get("assumptions_confirmed")),
@@ -348,8 +369,64 @@ def latest_payment(project_code: str) -> dict[str, Any] | None:
     return None
 
 
+def checkout_pricing_for_project(project: dict[str, Any]) -> dict[str, Any]:
+    """Resolve checkout only from server-persisted or configured project data."""
+    segment = segment_from_project(project)
+    approved_fee = project.get("admin_approved_visit_fee_cents")
+    if segment == "enterprise":
+        return calculate_visit_pricing(
+            segment,
+            str(project.get("customer_type") or ""),
+            str(project.get("project_size_class") or ""),
+            project.get("distance_miles"),
+            approved_amount_cents=approved_fee if isinstance(approved_fee, int) else None,
+        )
+
+    stored_fee = project.get("visit_fee_cents")
+    if isinstance(stored_fee, int) and stored_fee > 0:
+        return {
+            "fee_cents": stored_fee,
+            "label": str(project.get("visit_fee_label") or "Project Assessment"),
+            "distance_miles": project.get("distance_miles"),
+            "pricing_rule": str(project.get("pricing_rule") or "persisted_project_pricing"),
+            "requires_manual_review": False,
+        }
+
+    if isinstance(approved_fee, int) and approved_fee > 0:
+        return calculate_visit_pricing(
+            segment,
+            str(project.get("customer_type") or ""),
+            str(project.get("project_size_class") or ""),
+            project.get("distance_miles"),
+            approved_amount_cents=approved_fee,
+        )
+
+    has_new_pricing_fields = any(
+        key in project
+        for key in ("customer_segment", "customer_type", "project_size_class", "pricing_rule")
+    )
+    if has_new_pricing_fields:
+        return calculate_visit_pricing(
+            segment,
+            str(project.get("customer_type") or ""),
+            str(project.get("project_size_class") or ""),
+            project.get("distance_miles"),
+        )
+
+    # Existing records predate segment and route pricing. Preserve their former
+    # server-configured checkout without pretending a distance was calculated.
+    legacy_fee = STRIPE_DEPOSIT_AMOUNT_CENTS if STRIPE_DEPOSIT_AMOUNT_CENTS > 0 else None
+    return {
+        "fee_cents": legacy_fee,
+        "label": "Project Deposit",
+        "distance_miles": None,
+        "pricing_rule": "legacy_server_configured_deposit",
+        "requires_manual_review": legacy_fee is None,
+    }
+
+
 def stripe_is_configured() -> bool:
-    return bool(STRIPE_SECRET_KEY and STRIPE_DEPOSIT_AMOUNT_CENTS > 0)
+    return bool(STRIPE_SECRET_KEY)
 
 
 STREET_ADDRESS_PATTERN = re.compile(
@@ -481,6 +558,66 @@ QUALIFICATION_PROFILES: dict[str, dict[str, Any]] = {
         },
         "extras": ("photos or video", "prior cleaning attempts", "preferred timing"),
     },
+    "business": {
+        "label": "LODEX Business project",
+        "requirements": {
+            "site_and_scope": {
+                "label": "Property or business scope",
+                "description": "The property/business type and requested outcome are known, including turnover, make-ready, furnishing, renovation, repairs, or maintenance where relevant.",
+                "question": "What type of property or business is this, and what outcome do you need?",
+                "patterns": (r"\brental\b", r"\bairbnb\b", r"\bvrbo\b", r"\bstore\b", r"\bshop\b", r"\brestaurant\b", r"\boffice\b", r"\bturnover\b", r"\bmake.?ready\b", r"\brenovat", r"\brepair", r"\bmaintenan"),
+            },
+            "operations_access": {
+                "label": "Operations, access, and scheduling",
+                "description": "Tenant/customer continuity plus access and scheduling constraints are stated, unknown, or delegated for coordination.",
+                "question": "Will tenants or customers be onsite, and are there access or scheduling restrictions we should plan around?",
+                "patterns": (r"\btenant", r"\bcustomer", r"\boccupied\b", r"\bvacant\b", r"\baccess\b", r"\bhours\b", r"\bafter.?hours\b", r"\bkey", r"\blockbox\b", r"\bnot sure\b", r"\bcoordinate\b"),
+            },
+            "work_pattern": {
+                "label": "Location count and work pattern",
+                "description": "Whether this is one location or recurring work and the desired timing are known.",
+                "question": "Is this one location or recurring work, and when do you need it ready?",
+                "patterns": (r"\bone location\b", r"\bsingle (?:site|property|location)\b", r"\brecurring\b", r"\bongoing\b", r"\bportfolio\b", r"\basap\b", r"\bby\s+[a-z0-9]", r"\bthis (?:week|month)\b", r"\bflexible\b"),
+            },
+            "sourcing_relationship": {
+                "label": "Sourcing and relationship",
+                "description": "Purchasing/sourcing responsibility and one-time versus ongoing maintenance preference are known or flexible.",
+                "question": "Should LODEX purchase or source anything, and is this a one-time project or an ongoing maintenance relationship?",
+                "patterns": (r"\bsourc", r"\bpurchas", r"\bprocure", r"\bmaterial", r"\bappliance", r"\bfurnish", r"\bone.?time\b", r"\bongoing\b", r"\brecurring\b", r"\bmaintenance\b", r"\buse your judgment\b"),
+            },
+        },
+        "extras": ("tenant repair coordination", "inspection or turnover deadline"),
+    },
+    "enterprise": {
+        "label": "LODEX Enterprise scope",
+        "requirements": {
+            "portfolio_coverage": {
+                "label": "Locations, units, and coverage",
+                "description": "The approximate number of locations or units and geographic coverage are known.",
+                "question": "Approximately how many locations or units are involved, and what geographic area should the work cover?",
+                "patterns": (r"\b\d+\s+(?:units?|locations?|sites?|properties?)\b", r"\bportfolio\b", r"\bmultiple locations\b", r"\bstatewide\b", r"\bcounty\b", r"\bregional\b", r"\bcleveland\b", r"\bohio\b"),
+            },
+            "rollout_work": {
+                "label": "Rollout or maintenance need",
+                "description": "The desired rollout timing and whether this is recurring maintenance or a defined project rollout are known.",
+                "question": "What needs to roll out, on what timing, and is this a project program or recurring maintenance?",
+                "patterns": (r"\brollout\b", r"\bprogram\b", r"\brecurring\b", r"\bmaintenance\b", r"\brenovat", r"\bfurnish", r"\bturnover\b", r"\bby\s+[a-z0-9]", r"\bquarter\b", r"\bphase"),
+            },
+            "contacts_approval": {
+                "label": "Contacts and approvals",
+                "description": "The facilities/property contact and approval or procurement process are described or delegated for follow-up.",
+                "question": "Who coordinates facilities or property access, and what approval or procurement process should we follow?",
+                "patterns": (r"\bfacilit", r"\bproperty contact\b", r"\bmanager\b", r"\bprocure", r"\bapprov", r"\bdecision maker\b", r"\bcoordinator\b", r"\bfollow.?up\b"),
+            },
+            "standards_vendor": {
+                "label": "Standards and vendor requirements",
+                "description": "Standardized finish/material needs plus COI, vendor onboarding, and PO requirements are known or explicitly not required.",
+                "question": "Are standardized finishes or materials required, and do you have COI, vendor-onboarding, or PO requirements?",
+                "patterns": (r"\bstandard", r"\bfinish", r"\bmaterial", r"\bcoi\b", r"\bcertificate of insurance\b", r"\bvendor", r"\bpurchase order\b", r"\bpo\b", r"\bnot required\b", r"\bnone\b"),
+            },
+        },
+        "extras": ("site prioritization", "reporting and photo-documentation format"),
+    },
     "general": {
         "label": "General property project",
         "requirements": {
@@ -507,6 +644,11 @@ def captured_address(payload: IntakeChat) -> str:
 
 
 def qualification_profile(payload: IntakeChat) -> tuple[str, dict[str, Any]]:
+    if payload.customer_segment or payload.customer_type:
+        classification_text = f"{payload.customer_type or ''}\n{conversation_text(payload, 'user')}"
+        segment = classify_customer_segment(classification_text, payload.customer_segment)
+        if segment in {"business", "enterprise"}:
+            return segment, QUALIFICATION_PROFILES[segment]
     user_text = conversation_text(payload, "user").lower()
     decision_terms = sum(
         bool(re.search(pattern, user_text))
@@ -1176,6 +1318,13 @@ async def lookup_project(code: str, phone: str):
                 "status": project_event_statuses().get(requested_code, {}).get("status", "Meet-and-greet requested"),
                 "title": title,
                 "service_category": record.get("service_category", "General inquiry"),
+                "customer_segment": record.get("customer_segment"),
+                "customer_type": record.get("customer_type"),
+                "project_size_class": record.get("project_size_class"),
+                "distance_miles": record.get("distance_miles"),
+                "visit_fee_cents": record.get("visit_fee_cents"),
+                "visit_fee_label": record.get("visit_fee_label"),
+                "pricing_rule": record.get("pricing_rule"),
                 "next_step": "LODEX will confirm the requested visit window and review any remaining details with you.",
                 "progress": 100 if record.get("assumptions_confirmed") or record.get("intake_ready") else 72,
                 "scope_confirmed": bool(record.get("assumptions_confirmed")),
@@ -1194,12 +1343,35 @@ async def lookup_project(code: str, phone: str):
 async def request_appointment(request: AppointmentRequest):
     project_id = uuid.uuid4().hex
     project_code = f"LDX-{project_id[:6].upper()}"
+    classification_text = f"{request.customer_type or ''}\n{request.project_summary}\n{request.service_category}"
+    segment = classify_customer_segment(classification_text, request.customer_segment)
+    project_size = normalize_project_size(request.project_size_class) if segment == "home" else None
+    distance_result = None
+    distance_miles = None
+    if segment == "home":
+        distance_result = await distance.distance_provider.route_distance(request.address)
+        distance_miles = distance_result.miles
+    pricing = calculate_visit_pricing(
+        segment,
+        classification_text,
+        project_size,
+        distance_miles,
+    )
     record = request.model_dump() | {
         "id": project_id,
         "project_code": project_code,
         "status": "requested",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "note": "Requested time is not a final booking until LODEX confirms it.",
+        "customer_segment": segment,
+        "customer_type": request.customer_type or segment,
+        "project_size_class": project_size,
+        "distance_miles": pricing["distance_miles"],
+        "distance_provider": distance_result.provider if distance_result else None,
+        "visit_fee_cents": pricing["fee_cents"],
+        "visit_fee_label": pricing["label"],
+        "pricing_rule": pricing["pricing_rule"],
+        "pricing_requires_manual_review": pricing["requires_manual_review"],
     }
     append_jsonl(UPLOAD_DIR.parent / "appointment-requests.jsonl", record)
     await broadcast_admin_event("project.created", {
@@ -1207,6 +1379,9 @@ async def request_appointment(request: AppointmentRequest):
         "name": record["name"],
         "phone": record["phone"],
         "service_category": record["service_category"],
+        "customer_segment": record["customer_segment"],
+        "visit_fee_cents": record["visit_fee_cents"],
+        "visit_fee_label": record["visit_fee_label"],
         "preferred_date": record["preferred_date"],
         "preferred_time": record["preferred_time"],
     })
@@ -1223,6 +1398,14 @@ async def request_appointment(request: AppointmentRequest):
             "preferred_time": record["preferred_time"],
             "project_summary": record["project_summary"],
             "service_category": record["service_category"],
+            "customer_segment": record["customer_segment"],
+            "customer_type": record["customer_type"],
+            "project_size_class": record["project_size_class"],
+            "distance_miles": record["distance_miles"],
+            "visit_fee_cents": record["visit_fee_cents"],
+            "visit_fee_label": record["visit_fee_label"],
+            "pricing_rule": record["pricing_rule"],
+            "pricing_requires_manual_review": record["pricing_requires_manual_review"],
             "uploads": record["uploads"],
         },
     }
@@ -1230,16 +1413,26 @@ async def request_appointment(request: AppointmentRequest):
 
 @app.post("/api/payments/checkout")
 async def create_deposit_checkout(request: CheckoutRequest):
-    """Create a Stripe-hosted Checkout Session for a configured LODEX deposit.
-
-    The amount is server-configured; it is never accepted from the browser.
-    The project code and phone number must match an existing intake request.
-    """
+    """Create Checkout from persisted server pricing, never a browser amount."""
     project = find_project(request.project_code, request.phone)
     if project is None:
         raise HTTPException(404, "We could not match that project code and phone number.")
     if not stripe_is_configured():
         raise HTTPException(503, "Stripe deposits are not configured yet.")
+
+    pricing = checkout_pricing_for_project(project)
+    amount_cents = pricing.get("fee_cents")
+    if not isinstance(amount_cents, int) or amount_cents <= 0:
+        segment = segment_from_project(project)
+        if segment == "enterprise":
+            raise HTTPException(
+                409,
+                "LODEX Enterprise uses a custom assessment. We will review the scope and confirm the appropriate visit or project setup before payment.",
+            )
+        raise HTTPException(
+            409,
+            "LODEX needs to confirm route distance and the combined assessment amount before checkout.",
+        )
 
     project_code = str(project["project_code"]).upper()
     existing_payment = latest_payment(project_code)
@@ -1261,23 +1454,28 @@ async def create_deposit_checkout(request: CheckoutRequest):
         ("success_url", success_url),
         ("cancel_url", cancel_url),
         ("line_items[0][price_data][currency]", STRIPE_CURRENCY),
-        ("line_items[0][price_data][unit_amount]", str(STRIPE_DEPOSIT_AMOUNT_CENTS)),
-        ("line_items[0][price_data][product_data][name]", f"LODEX project deposit — {service_category}"),
+        ("line_items[0][price_data][unit_amount]", str(amount_cents)),
+        ("line_items[0][price_data][product_data][name]", f"LODEX {pricing['label']} — {service_category}"),
         ("line_items[0][quantity]", "1"),
         ("metadata[project_code]", project_code),
         ("metadata[project_id]", str(project.get("id", ""))),
+        ("metadata[customer_segment]", segment_from_project(project)),
+        ("metadata[pricing_rule]", str(pricing["pricing_rule"])[:500]),
     ]
     email = str(project.get("email") or "").strip()
     if email:
         fields.append(("customer_email", email))
 
-    session = await stripe_checkout_session(fields, f"lodex-deposit-{project_code}-{uuid.uuid4().hex}")
+    session = await stripe_checkout_session(fields, f"lodex-assessment-{project_code}-{uuid.uuid4().hex}")
     append_jsonl(PAYMENTS_FILE, {
         "project_code": project_code,
         "project_id": project.get("id"),
         "session_id": session["id"],
         "status": "checkout_created",
-        "amount_cents": STRIPE_DEPOSIT_AMOUNT_CENTS,
+        "customer_segment": segment_from_project(project),
+        "visit_fee_label": pricing["label"],
+        "pricing_rule": pricing["pricing_rule"],
+        "amount_cents": amount_cents,
         "currency": STRIPE_CURRENCY,
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
@@ -1285,7 +1483,9 @@ async def create_deposit_checkout(request: CheckoutRequest):
         "status": "checkout_created",
         "project_code": project_code,
         "checkout_url": session["url"],
-        "amount_cents": STRIPE_DEPOSIT_AMOUNT_CENTS,
+        "visit_fee_label": pricing["label"],
+        "pricing_rule": pricing["pricing_rule"],
+        "amount_cents": amount_cents,
         "currency": STRIPE_CURRENCY,
     }
 

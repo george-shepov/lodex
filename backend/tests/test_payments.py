@@ -132,6 +132,8 @@ def test_checkout_uses_server_amount_and_records_session(
         "status": "checkout_created",
         "project_code": "LDX-ABC123",
         "checkout_url": "https://checkout.stripe.test/cs_test_123",
+        "visit_fee_label": "Project Deposit",
+        "pricing_rule": "legacy_server_configured_deposit",
         "amount_cents": 5000,
         "currency": "usd",
     }
@@ -139,7 +141,7 @@ def test_checkout_uses_server_amount_and_records_session(
     assert fields["line_items[0][price_data][unit_amount]"] == "5000"
     assert fields["line_items[0][price_data][currency]"] == "usd"
     assert fields["customer_email"] == "customer@example.com"
-    assert str(captured["idempotency_key"]).startswith("lodex-deposit-LDX-ABC123-")
+    assert str(captured["idempotency_key"]).startswith("lodex-assessment-LDX-ABC123-")
 
     records = read_records(data_dir / "payments.jsonl")
     assert records[0]["status"] == "checkout_created"
@@ -163,6 +165,39 @@ def test_checkout_rejects_unmatched_project(payment_app, monkeypatch: pytest.Mon
     )
 
     assert response.status_code == 404
+    assert called is False
+
+
+def test_enterprise_checkout_requires_admin_approved_amount(payment_app, monkeypatch: pytest.MonkeyPatch):
+    data_dir = payment_app
+    record = {
+        "id": "enterprise-project",
+        "project_code": "LDX-ENT123",
+        "phone": "2165550100",
+        "customer_segment": "enterprise",
+        "customer_type": "property-management company",
+        "service_category": "LODEX Enterprise · Portfolio rollout",
+        "visit_fee_cents": 999,
+        "visit_fee_label": "Custom assessment",
+        "pricing_rule": "enterprise_custom_assessment",
+    }
+    (data_dir / "appointment-requests.jsonl").write_text(json.dumps(record) + "\n", encoding="utf-8")
+    called = False
+
+    async def fake_checkout(fields, idempotency_key):
+        nonlocal called
+        called = True
+        return {"id": "unused", "url": "https://unused.test"}
+
+    monkeypatch.setattr(main, "stripe_checkout_session", fake_checkout)
+    response = api_request(
+        "POST",
+        "/api/payments/checkout",
+        json={"project_code": "LDX-ENT123", "phone": "2165550100", "amount_cents": 1},
+    )
+
+    assert response.status_code == 409
+    assert "custom assessment" in response.json()["detail"].lower()
     assert called is False
 
 
