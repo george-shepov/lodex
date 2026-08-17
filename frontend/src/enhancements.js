@@ -6,12 +6,16 @@ import {
 
 function installFooterMark() {
   const link = document.querySelector('.footer-brand-link')
-  if (!link || link.querySelector('.footer-wordmark')) return
-  link.querySelector('.footer-logo')?.remove()
-  const mark = document.createElement('span')
-  mark.className = 'footer-wordmark'
-  mark.innerHTML = '<strong>LODEX</strong><small>Residential · Commercial · Property Services</small>'
-  link.append(mark)
+  if (!link) return
+  link.querySelector('.footer-wordmark')?.remove()
+  let logo = link.querySelector('.footer-logo')
+  if (!logo) {
+    logo = document.createElement('img')
+    logo.className = 'footer-logo'
+    link.append(logo)
+  }
+  logo.src = '/lodex-logo-home-business.webp'
+  logo.alt = 'LODEX Home & Business Services'
 }
 
 function getLookupValue(selector) {

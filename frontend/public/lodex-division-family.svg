@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+  <title id="title">LODEX Home, Business, and Enterprise</title>
+  <desc id="desc">The LODEX service family for homeowners, rental properties and independent businesses, and larger property, facility, institutional, and public-sector organizations.</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#20242a"/>
+      <stop offset="1" stop-color="#101216"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="320" rx="28" fill="#080a0d"/>
+  <g fill="url(#panel)" stroke="#5d4a24" stroke-width="2">
+    <rect x="18" y="18" width="376" height="284" rx="20"/>
+    <rect x="412" y="18" width="376" height="284" rx="20"/>
+    <rect x="806" y="18" width="376" height="284" rx="20"/>
+  </g>
+  <g>
+    <image href="lodex-logo-home-business.webp" x="40" y="44" width="332" height="112" preserveAspectRatio="xMidYMid meet"/>
+    <image href="lodex-logo-home-business.webp" x="434" y="44" width="332" height="112" preserveAspectRatio="xMidYMid meet"/>
+    <image href="lodex-logo-home-business.webp" x="828" y="44" width="332" height="112" preserveAspectRatio="xMidYMid meet"/>
+  </g>
+  <g font-family="Arial, Helvetica, sans-serif" text-anchor="middle">
+    <g fill="#f1c968" font-size="30" font-weight="800">
+      <text x="206" y="198">LODEX Home</text>
+      <text x="600" y="198">LODEX Business</text>
+      <text x="994" y="198">LODEX Enterprise</text>
+    </g>
+    <g fill="#bcc2c9" font-size="17">
+      <text x="206" y="233">Homeowners</text>
+      <text x="600" y="233">Rentals · shops · offices</text>
+      <text x="994" y="233">Portfolios · facilities · public sector</text>
+    </g>
+    <g fill="#7f8992" font-size="14">
+      <text x="206" y="263">Repairs through whole-home projects</text>
+      <text x="600" y="263">Independent property and business work</text>
+      <text x="994" y="263">Multi-site and institutional programs</text>
+    </g>
+  </g>
+</svg>

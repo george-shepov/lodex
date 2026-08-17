@@ -4,6 +4,7 @@ import packageMetadata from '../package.json'
 import { lzGalleryProjects } from './lzGallery'
 import AdminPanel from './components/AdminPanel.vue'
 import { serializeConversation } from './conversationPayload.mjs'
+import { readStoredHomeProjectSize, readStoredSegment, SEGMENT_LABELS } from './segmentState.mjs'
 
 const phone = '(440) 601-8001'
 const phoneHref = 'tel:+14406018001'
@@ -62,6 +63,8 @@ let presenceTimer = null
 const visitorId = ref('')
 const supportRequest = ref({ name: '', phone: '', message: '' })
 const supportStatus = ref('')
+const customerSegment = ref(readStoredSegment())
+const homeProjectSize = ref(readStoredHomeProjectSize())
 
 const services = [
   {
@@ -142,6 +145,45 @@ const services = [
       { src: '/services/pressure-washing-entry.webp', alt: 'LODEX professional pressure washing a walkway at a residential entrance', position: 'center top' },
     ],
     galleryCategories: [],
+  },
+  {
+    slug: 'turnkey-rental-launch',
+    nav: 'Launch a property',
+    title: 'Turnkey Rental / Property Launch',
+    short: 'Turnkey property launch',
+    summary: 'Renovation, appliances, furnishings, delivery, setup, cleaning, punch list, and rent-ready handoff through one coordinated scope.',
+    intro: 'Choose a coordinated Essential, Premium, or White Glove / Signature starting point. Starting budgets are around $25,000, $35,000, and $50,000—not fixed-price guarantees. Final pricing depends on condition, size, scope, selections, location, and licensed-trade requirements.',
+    includes: ['Renovation, repair, and final punch list', 'Appliances, furniture, delivery, and installation', 'Wi-Fi/networking, smart locks, cleaning, and setup', 'Rent-ready handoff with one coordinated plan'],
+    useCases: ['Essential — starting around $25,000', 'Premium — starting around $35,000', 'White Glove / Signature — starting around $50,000'],
+    starter: 'I need a turnkey rental or property launch. The property, current condition, and desired handoff are: ',
+    heroImages: [{ src: '/services/renovation-project-planning.webp', alt: 'LODEX turnkey property launch planning and finish selection', position: 'center center' }],
+    galleryCategories: ['Kitchens', 'Bathrooms', 'Installation'],
+  },
+  {
+    slug: 'inspection-ready',
+    nav: 'Prepare for inspection',
+    title: 'Voucher / Section 8 / HCV Inspection-Ready',
+    short: 'Inspection-ready support',
+    summary: 'Pre-inspection walkthrough, punch list, remediation support, cleanup, photo documentation, and inspection preparation.',
+    intro: 'We help owners prepare a property for inspection with practical walkthrough and remediation support. LODEX does not certify or approve Section 8 or HCV compliance.',
+    includes: ['Smoke/CO detectors and safety issue punch lists', 'Doors, windows, locks, paint, and patching', 'Appliance checks, cleanup, and repair coordination', 'Photo documentation and inspection preparation'],
+    useCases: ['Voucher or HCV inspection preparation', 'Repair and remediation before a scheduled inspection', 'Inspection-ready documentation and final punch list'],
+    starter: 'I need inspection-ready or HCV remediation support. The property and known punch-list items are: ',
+    heroImages: [{ src: '/services/handyman-tools.webp', alt: 'LODEX inspection-ready repair and remediation support', position: 'center center' }],
+    galleryCategories: ['Painting', 'Installation'],
+  },
+  {
+    slug: 'corporate-housing',
+    nav: 'House a team',
+    title: 'LODEX Corporate Housing',
+    short: 'Corporate housing',
+    summary: 'Acquire it. Renovate it. Furnish it. House your team.',
+    intro: 'For houses purchased or leased by companies for employees: renovation, durable finishes, furnishings, appliances, Wi-Fi, access control, recurring cleaning, maintenance, crew turnover, and property operations.',
+    includes: ['Renovation and durable finish programs', 'Beds, desks, TVs, appliances, and furnishings', 'Wi-Fi/networking, access control, and smart locks', 'Recurring cleaning, maintenance, and crew turnover'],
+    useCases: ['Workforce and project housing', 'Corporate employee homes', 'Repeat property setup and operations'],
+    starter: 'I need LODEX Corporate Housing support. The number of properties, locations, timing, and team needs are: ',
+    heroImages: [{ src: '/services/materials-procurement.webp', alt: 'LODEX corporate housing furnishings and durable materials planning', position: 'center center' }],
+    galleryCategories: ['Commercial', 'Installation', 'Materials & surfaces'],
   },
 ]
 
@@ -297,14 +339,14 @@ const galleryHeroSlides = lzGalleryProjects
   .filter(project => ['Kitchens', 'Bathrooms', 'Commercial', 'Installation', 'Painting', 'Tile & patterns'].includes(project.category))
   .map(asGallerySlide)
 const homePhotoSlides = rotateFromStoredPosition([...brandedHeroSlides, ...galleryHeroSlides], 'lodex-home-reel-start', 7).slice(0, 7)
-const logoVideoSlide = sequence => ({ id: `lodex-logo-${sequence}`, type: 'video', src: '/lodex-hero.mp4', poster: '/lodex-logo-home-business.webp', title: 'One point of contact for the work ahead', eyebrow: 'Residential & commercial' })
+const brandLogoSlide = sequence => ({ id: `lodex-logo-${sequence}`, type: 'image', brand: true, src: '/lodex-logo-home-business.webp', alt: 'LODEX Home & Business Services', position: 'center center', title: 'Home · Business · Enterprise', eyebrow: 'One LODEX service family' })
 const homeHeroSlides = [
   ...homePhotoSlides.slice(0, 2),
-  logoVideoSlide(1),
+  brandLogoSlide(1),
   ...homePhotoSlides.slice(2, 5),
-  logoVideoSlide(2),
+  brandLogoSlide(2),
   ...homePhotoSlides.slice(5, 7),
-  logoVideoSlide(3),
+  brandLogoSlide(3),
 ]
 
 const messages = ref([{ role: 'assistant', text: 'What can LODEX take off your plate? Choose a service below, tell us in your own words, or show us the space.' }])
@@ -327,6 +369,31 @@ const scopePercent = computed(() => agreed.value ? 100 : qualification.value.pro
 const scopeLabel = computed(() => agreed.value ? 'Scope confirmed' : intakeReady.value ? 'Ready for the next step' : qualification.value.qualified ? 'Lead qualified · optional details' : hasCustomerMessage.value ? 'Qualifying the project' : 'Ready when you are')
 const canSchedule = computed(() => hasCustomerMessage.value || uploaded.value)
 const intakeTitle = computed(() => selectedService.value?.title || 'Your project')
+const segmentTitle = computed(() => SEGMENT_LABELS[customerSegment.value] || 'Choose your LODEX team')
+
+function formatFee(cents) {
+  if (!Number.isInteger(cents) || cents <= 0) return ''
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
+}
+
+function pricingMessage(record) {
+  if (!record) return ''
+  const amount = formatFee(record.visit_fee_cents)
+  if (amount) return `${record.visit_fee_label || 'Project Assessment'} — ${amount}`
+  if (record.customer_segment === 'enterprise') return 'Custom Assessment — We’ll review the scope and confirm the appropriate visit/project setup.'
+  return 'Assessment amount pending — We’ll confirm route distance and the combined visit amount.'
+}
+
+function paymentAvailable(record) {
+  if (!record) return false
+  if (record.customer_segment) return Number.isInteger(record.visit_fee_cents) && record.visit_fee_cents > 0
+  return true
+}
+
+function onSegmentChanged(event) {
+  customerSegment.value = event.detail?.segment || readStoredSegment()
+  homeProjectSize.value = event.detail?.projectSizeClass || readStoredHomeProjectSize()
+}
 
 function preloadSlide(slide) {
   if (!slide || slide.type !== 'image') return
@@ -700,8 +767,8 @@ function onKeydown(event) {
   if (selectedInspiration.value && event.key === 'ArrowRight') moveInspiration(1)
 }
 function onPopState() { currentPath.value = window.location.pathname; sendPresence() }
-onMounted(() => { window.addEventListener('popstate', onPopState); window.addEventListener('keydown', onKeydown); ensureVisitorId(); sendPresence(); presenceTimer = window.setInterval(sendPresence, 25000); handlePaymentReturn(); nextTick(observeGallerySentinel) })
-onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); window.removeEventListener('keydown', onKeydown); window.clearTimeout(homeReelTimer); window.clearTimeout(serviceReelTimer); galleryObserver?.disconnect(); window.clearInterval(presenceTimer); stopVirtualMedia() })
+onMounted(() => { window.addEventListener('popstate', onPopState); window.addEventListener('keydown', onKeydown); window.addEventListener('lodex:segment-changed', onSegmentChanged); ensureVisitorId(); sendPresence(); presenceTimer = window.setInterval(sendPresence, 25000); handlePaymentReturn(); nextTick(observeGallerySentinel) })
+onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); window.removeEventListener('keydown', onKeydown); window.removeEventListener('lodex:segment-changed', onSegmentChanged); window.clearTimeout(homeReelTimer); window.clearTimeout(serviceReelTimer); galleryObserver?.disconnect(); window.clearInterval(presenceTimer); stopVirtualMedia() })
 </script>
 
 <template>
@@ -780,7 +847,7 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); wind
         <div class="hero-copy"><p class="eyebrow">LODEX · Northeast Ohio</p><h1>One call. <em>Real progress.</em></h1><p class="lede">From repairs and maintenance to delivery, installation, cleanup, restoration, and larger improvements, LODEX gives you one local point of contact and a clear next step.</p><div class="hero-value-points" aria-label="Why start with LODEX"><span>One point of contact</span><span>Photo-first intake</span><span>Residential & commercial</span></div><div class="hero-service-lanes" aria-label="Choose a LODEX service"><button v-for="service in services" :key="service.slug" type="button" @click="chooseService(service); scrollToIntake()">{{ service.nav }}</button></div><div class="hero-actions"><button type="button" class="primary-button" @click="scrollToIntake">Start with your project <span>↗</span></button><a class="phone-link" :href="phoneHref">Or call {{ phone }}</a></div></div>
         <div class="hero-visual" aria-label="LODEX services and project inspiration slideshow">
           <Transition name="reel-fade">
-            <img v-if="homeHeroSlide.type === 'image'" :key="homeHeroSlide.id" class="hero-reel-media" :src="homeHeroSlide.src" :alt="homeHeroSlide.alt" :style="{ objectPosition: homeHeroSlide.position }" width="1254" height="1254" fetchpriority="high" decoding="async" @error="advanceHomeHero" />
+            <img v-if="homeHeroSlide.type === 'image'" :key="homeHeroSlide.id" class="hero-reel-media" :class="{ 'brand-logo-slide': homeHeroSlide.brand }" :src="homeHeroSlide.src" :alt="homeHeroSlide.alt" :style="{ objectPosition: homeHeroSlide.position }" width="1254" height="1254" fetchpriority="high" decoding="async" @error="advanceHomeHero" />
             <video v-else :key="homeHeroSlide.id" ref="homeVideoRef" class="hero-reel-media hero-reel-video" autoplay muted playsinline preload="metadata" :poster="homeHeroSlide.poster" aria-label="Animated LODEX Home Services logo" @ended="advanceHomeHero" @error="advanceHomeHero"><source :src="homeHeroSlide.src" type="video/mp4"/></video>
           </Transition>
           <div class="hero-video-scrim"></div>
@@ -798,16 +865,16 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); wind
 
       <section id="how-it-works" class="how-section"><div class="page-width"><p class="eyebrow">Simple by design</p><div class="how-grid"><h2>Clear scope before the work begins.</h2><div class="how-steps"><div><b>01</b><h3>Tell us the outcome</h3><p>Choose a service, describe the job, or send photos and short video.</p></div><div><b>02</b><h3>Confirm the real details</h3><p>We ask only what is needed to understand scope, access, timing, and materials.</p></div><div><b>03</b><h3>Set the next step</h3><p>Request a meet-and-greet or coordinated visit—then get a clear, confirmed plan.</p></div></div></div></div></section>
 
-      <section id="intake" class="intake-section"><div class="page-width"><div class="intake-head"><div><p class="eyebrow">Start your project</p><h2>Let’s figure out <em>what’s next.</em></h2><p class="intake-copy">Selected service: <b>{{ intakeTitle }}</b></p></div><div class="scope-meter"><div class="scope-meter-top"><span>{{ scopeLabel }}</span><b>{{ scopePercent }}%</b></div><div class="meter-track"><i :style="{ width: `${scopePercent}%` }"></i></div><small>{{ qualification.qualified ? 'The required facts are covered; useful extras can still improve the visit.' : 'Progress reflects the service facts we actually need—not the number of messages.' }}</small></div></div>
+      <section id="intake" class="intake-section"><div class="page-width"><div class="intake-head"><div><p class="eyebrow">Start your project</p><h2>Let’s figure out <em>what’s next.</em></h2><p class="intake-copy"><b>{{ segmentTitle }}</b><template v-if="customerSegment === 'home' && homeProjectSize"> · {{ homeProjectSize }} homeowner project</template><br/>Selected service: <b>{{ intakeTitle }}</b></p></div><div class="scope-meter"><div class="scope-meter-top"><span>{{ scopeLabel }}</span><b>{{ scopePercent }}%</b></div><div class="meter-track"><i :style="{ width: `${scopePercent}%` }"></i></div><small>{{ qualification.qualified ? 'The required facts are covered; useful extras can still improve the visit.' : 'Progress reflects the service facts we actually need—not the number of messages.' }}</small></div></div>
         <div class="service-chips" aria-label="Choose a service"><button v-for="service in services" :key="service.slug" type="button" :class="{ selected: selectedService?.slug === service.slug }" @click="chooseService(service, false)">{{ service.short }}</button></div>
         <div class="flow"><span :class="{ active: step === 'chat' }">1. Talk it through</span><span :class="{ active: step === 'schedule' }">2. Request a visit</span><span :class="{ active: step === 'done' }">3. Keep the details</span></div>
         <div v-if="step === 'chat'" class="workspace"><div class="chat-card"><div class="chat-title"><i></i><div><b>LODEX project intake</b><small>Human-friendly questions, with AI help when useful.</small></div><button type="button" class="mini-link" @click="openSchedule">Request a visit ↗</button></div><div class="messages"><article v-for="(item, index) in messages" :key="index" :class="item.role"><p>{{ item.text }}</p></article><div v-if="sending" class="assistant"><p class="typing">Thinking through the project…</p></div></div><form class="composer" @submit.prevent="send"><textarea v-model="message" :disabled="sending" placeholder="For example: I need a TV mounted above a brick fireplace…" rows="3"></textarea><button type="submit" :disabled="sending || !message.trim()">Send</button></form></div>
           <aside class="upload-card"><p class="eyebrow">Helpful, not required</p><h3>Show us the work area.</h3><p>Photos and short videos help us ask better questions. They do not create a final estimate.</p><label class="file-picker"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,video/mp4,video/quicktime,video/webm" @change="selectedFile = $event.target.files[0]"/><span>{{ selectedFile ? selectedFile.name : 'Choose photo or video' }}</span><b>＋</b></label><textarea v-model="description" placeholder="Anything we should notice?"></textarea><button type="button" class="outline-button" @click="upload" :disabled="!selectedFile || sending">{{ sending ? 'Uploading…' : 'Upload & analyze' }}</button><div v-if="qualification.requirements.length" class="qualification-checklist"><small>{{ qualification.label }}</small><ul><li v-for="item in qualification.requirements" :key="item.id" :class="{ covered: item.covered }"><span>{{ item.covered ? '✓' : '○' }}</span>{{ item.label }}</li></ul></div><label class="confirm"><input v-model="agreed" type="checkbox" :disabled="!hasCustomerMessage"/><span>I reviewed the captured scope and it is accurate to the best of my knowledge.</span></label><button type="button" class="ready-button" @click="openSchedule" :disabled="!canSchedule">{{ qualification.qualified ? 'Choose a visit time' : 'Continue to meet-and-greet' }} <span>↗</span></button></aside></div>
         <form v-else-if="step === 'schedule'" class="schedule-card" @submit.prevent="book"><div><p class="eyebrow">Next: a real-world check</p><h3>Request your meet-and-greet.</h3><p>{{ handoffMessage || 'Choose a preferred window. We’ll confirm the visit and clarify anything still unknown before a final price is set.' }}</p></div><div class="fields"><input v-model="appointment.name" required placeholder="Your name"/><input v-model="appointment.phone" required placeholder="Phone"/><input v-model="appointment.email" type="email" placeholder="Email (optional)"/><input v-model="appointment.address" required placeholder="Job address"/><input v-model="appointment.preferred_date" required type="date"/><select v-model="appointment.preferred_time" required><option disabled value="">Preferred arrival window</option><option>Morning · 9 AM–12 PM</option><option>Afternoon · 12 PM–3 PM</option><option>Late afternoon · 3 PM–6 PM</option></select></div><div class="schedule-actions"><button type="submit" class="primary-button" :disabled="sending">{{ sending ? 'Sending…' : 'Request meet-and-greet' }} <span>↗</span></button><button type="button" class="back-button" @click="step = 'chat'">Back to conversation</button></div><p v-if="notice" class="notice">{{ notice }}</p></form>
-        <div v-else class="success-card"><p class="eyebrow">Request received</p><h3>Everything we received is shown below.</h3><p>{{ notice }}</p><div v-if="projectCode" class="project-code"><span>Your project code</span><b>{{ projectCode }}</b><small>Save this code with the phone number you used. You can return to the project portal below.</small></div><div v-if="confirmation" class="confirmation-details"><div><span>Service</span><b>{{ confirmation.service_category }}</b></div><div><span>Preferred visit</span><b>{{ confirmation.preferred_date }} · {{ confirmation.preferred_time }}</b></div><div><span>Job address</span><b>{{ confirmation.address }}</b></div><div><span>Contact</span><b>{{ confirmation.name }} · {{ confirmation.phone }}<template v-if="confirmation.email"> · {{ confirmation.email }}</template></b></div><section><span>Project details</span><p>{{ confirmation.project_summary }}</p></section><section><span>Attachments</span><p v-if="confirmation.uploads?.length">{{ confirmation.uploads.map(file => file.filename).join(', ') }}</p><p v-else>No files attached.</p></section></div><div class="confirmation-actions"><button type="button" class="virtual-button" @click="openVirtualMeet">▣ Start a virtual meet-and-greet</button><div v-if="paymentStatus === 'paid'" class="payment-confirmed">Deposit payment recorded.</div><button v-else type="button" class="primary-button" @click="startDeposit" :disabled="sending">{{ sending ? 'Opening secure checkout…' : 'Pay a requested deposit' }} <span>↗</span></button></div><p v-if="paymentError" class="error">{{ paymentError }}</p><a class="text-link" href="#project">Open my project details →</a></div>
+        <div v-else class="success-card"><img class="confirmation-logo" src="/lodex-logo-home-business.webp" alt="LODEX Home & Business Services"/><p class="eyebrow">Request received</p><h3>Everything we received is shown below.</h3><p>{{ notice }}</p><div v-if="projectCode" class="project-code"><span>Your project code</span><b>{{ projectCode }}</b><small>Save this code with the phone number you used. You can return to the project portal below.</small></div><div v-if="confirmation" class="assessment-summary"><b>{{ pricingMessage(confirmation) }}</b><small v-if="confirmation.visit_fee_cents">Your visit price reflects project type and route distance. The amount shown is calculated by LODEX on the server.</small><small v-else>We never invent mileage. LODEX will review the address and confirm the amount before payment.</small></div><div v-if="confirmation" class="confirmation-details"><div><span>Division</span><b>{{ SEGMENT_LABELS[confirmation.customer_segment] || 'LODEX' }}</b></div><div><span>Service</span><b>{{ confirmation.service_category }}</b></div><div><span>Preferred visit</span><b>{{ confirmation.preferred_date }} · {{ confirmation.preferred_time }}</b></div><div><span>Job address</span><b>{{ confirmation.address }}</b></div><div><span>Contact</span><b>{{ confirmation.name }} · {{ confirmation.phone }}<template v-if="confirmation.email"> · {{ confirmation.email }}</template></b></div><section><span>Project details</span><p>{{ confirmation.project_summary }}</p></section><section><span>Attachments</span><p v-if="confirmation.uploads?.length">{{ confirmation.uploads.map(file => file.filename).join(', ') }}</p><p v-else>No files attached.</p></section></div><div class="confirmation-actions"><button type="button" class="virtual-button" @click="openVirtualMeet">▣ Start a virtual meet-and-greet</button><div v-if="paymentStatus === 'paid'" class="payment-confirmed">Assessment payment recorded.</div><button v-else-if="paymentAvailable(confirmation)" type="button" class="primary-button" @click="startDeposit" :disabled="sending">{{ sending ? 'Opening secure checkout…' : `Pay ${confirmation.visit_fee_label || 'assessment'}` }} <span>↗</span></button></div><p v-if="paymentError" class="error">{{ paymentError }}</p><a class="text-link" href="#project">Open my project details →</a></div>
       </div></section>
 
-      <section id="project" class="project-section page-width"><div class="section-heading"><div><p class="eyebrow">Returning customers</p><h2>Your project, in one place.</h2></div><p>Use your project code and the phone number on the request to see the latest scope and next step.</p></div><form class="lookup-card" @submit.prevent="lookupProject"><label>Project code<input v-model="projectCode" placeholder="LDX-123456" autocomplete="off"/></label><label>Phone used for the request<input v-model="projectPhone" type="tel" placeholder="216-555-0123" autocomplete="tel"/></label><button type="submit" class="primary-button">Open my project <span>↗</span></button><p v-if="projectError" class="error">{{ projectError }}</p><div v-if="project" class="project-result"><div class="project-result-top"><span>{{ project.status }}</span><b>{{ project.progress }}%</b></div><h3>{{ project.title }}</h3><p v-if="project.service_category" class="project-service">{{ project.service_category }}</p><p>{{ project.next_step }}</p><div class="meter-track"><i :style="{ width: `${project.progress}%` }"></i></div><small>Scope confirmation: {{ project.scope_confirmed ? '100% confirmed' : 'still being reviewed' }}</small><div class="customer-project-details"><div><span>Requested visit</span><b>{{ project.requested_date }} · {{ project.requested_time }}</b></div><div><span>Job address</span><b>{{ project.address }}</b></div><section><span>Project details</span><p>{{ project.project_summary }}</p></section><section><span>Attachments</span><p>{{ project.uploads?.length ? project.uploads.map(file => file.filename).join(', ') : 'No files attached.' }}</p></section></div><div v-if="paymentStatus === 'paid'" class="payment-confirmed">Deposit payment recorded.</div><button v-else type="button" class="primary-button" @click="startDeposit" :disabled="sending">{{ sending ? 'Opening secure checkout…' : 'Pay a requested deposit' }} <span>↗</span></button><p v-if="paymentError" class="error">{{ paymentError }}</p><button type="button" class="virtual-button" @click="openVirtualMeet">▣ Start virtual meet-and-greet</button></div></form></section>
+      <section id="project" class="project-section page-width"><div class="section-heading"><div><p class="eyebrow">Returning customers</p><h2>Your project, in one place.</h2></div><p>Use your project code and the phone number on the request to see the latest scope and next step.</p></div><form class="lookup-card" @submit.prevent="lookupProject"><label>Project code<input v-model="projectCode" placeholder="LDX-123456" autocomplete="off"/></label><label>Phone used for the request<input v-model="projectPhone" type="tel" placeholder="216-555-0123" autocomplete="tel"/></label><button type="submit" class="primary-button">Open my project <span>↗</span></button><p v-if="projectError" class="error">{{ projectError }}</p><div v-if="project" class="project-result"><img class="confirmation-logo" src="/lodex-logo-home-business.webp" alt="LODEX Home & Business Services"/><div class="project-result-top"><span>{{ project.status }}</span><b>{{ project.progress }}%</b></div><h3>{{ project.title }}</h3><p v-if="project.service_category" class="project-service">{{ project.service_category }}</p><p>{{ project.next_step }}</p><div class="assessment-summary"><b>{{ pricingMessage(project) }}</b><small v-if="project.visit_fee_cents">One combined amount; project type and route distance are already reflected.</small><small v-else-if="project.customer_segment">LODEX will confirm the appropriate setup before payment.</small></div><div class="meter-track"><i :style="{ width: `${project.progress}%` }"></i></div><small>Scope confirmation: {{ project.scope_confirmed ? '100% confirmed' : 'still being reviewed' }}</small><div class="customer-project-details"><div><span>Requested visit</span><b>{{ project.requested_date }} · {{ project.requested_time }}</b></div><div><span>Job address</span><b>{{ project.address }}</b></div><section><span>Project details</span><p>{{ project.project_summary }}</p></section><section><span>Attachments</span><p>{{ project.uploads?.length ? project.uploads.map(file => file.filename).join(', ') : 'No files attached.' }}</p></section></div><div v-if="paymentStatus === 'paid'" class="payment-confirmed">Assessment payment recorded.</div><button v-else-if="paymentAvailable(project)" type="button" class="primary-button" @click="startDeposit" :disabled="sending">{{ sending ? 'Opening secure checkout…' : `Pay ${project.visit_fee_label || 'requested deposit'}` }} <span>↗</span></button><p v-if="paymentError" class="error">{{ paymentError }}</p><button type="button" class="virtual-button" @click="openVirtualMeet">▣ Start virtual meet-and-greet</button></div></form></section>
     </template>
 
     <div v-if="selectedInspiration" class="inspiration-lightbox" role="dialog" aria-modal="true" :aria-label="selectedInspiration.title" @click.self="closeInspiration"><button type="button" class="lightbox-close inspiration-lightbox-close" aria-label="Close image" @click="closeInspiration">×</button><button type="button" class="lightbox-arrow lightbox-previous" aria-label="Previous image" @click="moveInspiration(-1)">←</button><img :src="selectedInspiration.src" :alt="selectedInspiration.alt || selectedInspiration.title"/><button type="button" class="lightbox-arrow lightbox-next" aria-label="Next image" @click="moveInspiration(1)">→</button><div><span>{{ selectedInspiration.category || 'AI inspiration concept' }}</span><b>{{ selectedInspiration.title }}</b><small>{{ selectedInspiration.detail }}</small></div></div>

@@ -197,6 +197,11 @@ function formatDate(value) {
   return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
+function formatMoney(cents) {
+  if (!Number.isInteger(cents) || cents <= 0) return 'Review required'
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
+}
+
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
   checkSession()
@@ -253,7 +258,7 @@ onBeforeUnmount(() => {
         <div v-if="projectRequests.length" class="admin-project-list">
           <article v-for="request in projectRequests" :key="request.project_code">
             <div class="admin-project-top"><div><span>{{ request.project_code }} · {{ request.status }}</span><h3>{{ request.name }} — {{ request.service_category }}</h3><p>{{ request.address }}</p></div><small>{{ formatDate(request.created_at) }}</small></div>
-            <div class="admin-project-meta"><span><b>Phone</b>{{ request.phone }}</span><span><b>Email</b>{{ request.email || '—' }}</span><span><b>Requested visit</b>{{ request.preferred_date }} · {{ request.preferred_time }}</span><span><b>Payment</b>{{ request.payment_status }}</span></div>
+            <div class="admin-project-meta"><span><b>Division</b>{{ request.customer_segment || 'Legacy record' }}</span><span><b>Assessment</b>{{ request.visit_fee_label || 'Project deposit' }} · {{ formatMoney(request.visit_fee_cents) }}</span><span><b>Requested visit</b>{{ request.preferred_date }} · {{ request.preferred_time }}</span><span><b>Payment</b>{{ request.payment_status }}</span><span><b>Phone</b>{{ request.phone }}</span><span><b>Email</b>{{ request.email || '—' }}</span><span><b>Distance</b>{{ request.distance_miles == null ? 'Pending review' : `${request.distance_miles} miles` }}</span><span><b>Pricing rule</b>{{ request.pricing_rule || 'Legacy server pricing' }}</span></div>
             <p class="admin-summary">{{ request.project_summary }}</p>
             <section v-if="request.uploads?.length" class="admin-attachments" :aria-label="`Customer photos and files for ${request.project_code}`">
               <div class="admin-attachments-heading"><b>Customer photos & files</b><span>{{ request.uploads.length }}</span></div>

@@ -1,8 +1,5 @@
 .lodex-brand-loop { position:absolute; top:0; right:0; width:77%; height:350px; object-fit:cover; border:8px solid var(--white); background:#050606; box-shadow:var(--shadow); }
 .footer-brand-link { display:inline-flex; text-decoration:none; }
-.footer-wordmark { display:inline-flex; flex-direction:column; gap:4px; padding:2px 0; background:transparent; }
-.footer-wordmark strong { width:max-content; font-size:clamp(34px,4vw,54px); line-height:.9; font-weight:800; letter-spacing:.09em; background:linear-gradient(180deg,#fff6d2 0%,#d5a552 48%,#8b622a 100%); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 2px 8px rgba(210,162,84,.18)); }
-.footer-wordmark small { color:#948d80; font:9px 'DM Mono',monospace; letter-spacing:.08em; text-transform:uppercase; }
 .customer-survey { margin-top:22px; padding:20px; border:1px solid var(--line); border-radius:12px; background:#faf8f3; }
 .survey-head span,.survey-head b { display:block; }.survey-head span { color:#9a651b; font:10px 'DM Mono',monospace; letter-spacing:.08em; text-transform:uppercase; }.survey-head b { margin-top:5px; font-size:16px; }
 .survey-stars { display:flex; gap:5px; margin:13px 0; }.survey-stars button { border:0; background:transparent; color:#c8c3b8; padding:1px 2px; font-size:27px; line-height:1; }.survey-stars button:hover,.survey-stars button.selected { color:var(--gold); }
@@ -60,7 +57,6 @@ html,body,#app { max-width:100%; overflow-x:hidden; }
 
 @media (max-width:760px) {
   .lodex-brand-loop { width:82%; height:280px; }
-  .footer-wordmark strong { font-size:38px; }
   .composer { flex-direction:row; flex-wrap:wrap; align-items:flex-end; }
   .composer textarea { flex:1 1 calc(100% - 55px); min-width:0; font-size:17px; }
   .composer .voice-input-button { width:46px; flex:0 0 46px; }

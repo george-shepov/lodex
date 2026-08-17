@@ -8,43 +8,12 @@ import { guardIntakeReply } from './intakeQuestionGuard.mjs'
 import { createUploadAccumulator } from './uploadAccumulator.mjs'
 import { lzGalleryProjects } from './lzGallery'
 import { applyGalleryCuration } from './galleryCuration.mjs'
+import { withCustomerSegment } from './segmentState.mjs'
 import './shadcn.css'
 import './style.css'
 import './virtual.css'
 import './enhancements.css'
 import './admin.css'
-
-const CUSTOMER_SEGMENT_KEY = 'lodex-customer-segment-v1'
-const SEGMENT_LABELS = {
-  home: 'LODEX Home',
-  business: 'LODEX Business',
-  enterprise: 'LODEX Enterprise',
-}
-
-function currentCustomerSegment() {
-  try {
-    const value = window.localStorage.getItem(CUSTOMER_SEGMENT_KEY) || ''
-    return SEGMENT_LABELS[value] ? value : ''
-  } catch {
-    return ''
-  }
-}
-
-function withCustomerSegment(payload) {
-  if (!payload || typeof payload !== 'object') return payload
-  const segment = currentCustomerSegment()
-  if (!segment) return payload
-
-  const label = SEGMENT_LABELS[segment]
-  const category = String(payload.service_category || '').trim()
-  const baseCategory = category.replace(/^LODEX\s+(?:Home|Business|Enterprise)\s*·\s*/i, '').trim()
-
-  return {
-    ...payload,
-    customer_type: segment,
-    service_category: `${label} · ${baseCategory || 'General inquiry'}`,
-  }
-}
 
 function installLodexRequestGuards() {
   const nativeFetch = window.fetch.bind(window)
