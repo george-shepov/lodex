@@ -368,6 +368,10 @@ FRUSTRATION_CUES = (
     "not reading another",
     "why are you keep",
     "why do you keep",
+    "same question",
+    "asking me the same",
+    "asked me already",
+    "how many times",
     "just do it",
     "go already",
     "wrap it up",
@@ -566,6 +570,34 @@ def customer_asked_question(message: str) -> bool:
     )
 
 
+def customer_declines_more_detail(payload: IntakeChat) -> bool:
+    """Stop an open-ended/optional follow-up without misreading a specific answer."""
+    message = payload.message
+    if re.fullmatch(
+        r"\s*(?:that['’]?s\s+all|no\s+more(?:\s+details?)?|nothing\s+else)[\s.!?]*",
+        message,
+        re.IGNORECASE,
+    ):
+        return True
+    if not re.fullmatch(
+        r"\s*(?:i\s*(?:do\s*n['’]?t|don['’]?t)\s*know|idk|not\s+sure|nothing)[\s.!?]*",
+        message,
+        re.IGNORECASE,
+    ):
+        return False
+    previous = payload.conversation[-2] if len(payload.conversation) >= 2 else None
+    previous_text = previous.text.lower() if previous and previous.role == "assistant" else ""
+    return bool(
+        previous
+        and previous.role == "assistant"
+        and (
+            previous.kind == "extra"
+            or "important detail" in previous_text
+            or "anything else" in previous_text
+        )
+    )
+
+
 def extra_questions_asked(payload: IntakeChat) -> int:
     return sum(1 for turn in payload.conversation if turn.role == "assistant" and turn.kind == "extra")
 
@@ -729,7 +761,17 @@ async def qualification_decision(payload: IntakeChat) -> dict[str, Any]:
     latest_text = payload.message.lower()
     wants_action = any(cue in latest_text for cue in ACTION_CUES)
     is_frustrated = any(cue in latest_text for cue in FRUSTRATION_CUES)
+    declines_more_detail = customer_declines_more_detail(payload)
     latest_question = customer_asked_question(payload.message)
+
+    if wants_action or is_frustrated or declines_more_detail:
+        if response_kind != "handoff" or not reply or "?" in reply:
+            reply = handoff_fallback()
+        return {
+            "reply": reply,
+            "ready_to_schedule": True,
+            "question_kind": "handoff",
+        } | response_meta
 
     if missing:
         next_requirement = requirements[missing[0]]
@@ -743,15 +785,6 @@ async def qualification_decision(payload: IntakeChat) -> dict[str, Any]:
             "reply": reply,
             "ready_to_schedule": False,
             "question_kind": "required",
-        } | response_meta
-
-    if wants_action or is_frustrated:
-        if response_kind != "handoff" or not reply or "?" in reply:
-            reply = handoff_fallback()
-        return {
-            "reply": reply,
-            "ready_to_schedule": True,
-            "question_kind": "handoff",
         } | response_meta
 
     if latest_question:
