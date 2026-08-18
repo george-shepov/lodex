@@ -1,0 +1,20 @@
+{
+  "name": "@lodex/yelptomate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "LODEX Yelp for Business browser automation harness with Playwright, Puppeteer, and Selenium adapters.",
+  "scripts": {
+    "discover": "node src/index.mjs discover",
+    "inbox": "node src/index.mjs inbox",
+    "reply": "node src/index.mjs reply"
+  },
+  "dependencies": {
+    "playwright": "latest",
+    "puppeteer": "latest",
+    "selenium-webdriver": "latest"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
