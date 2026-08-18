@@ -98,7 +98,7 @@ function changeSelection() {
             <span class="segment-choose">Choose {{ segment.title.replace('LODEX ', '') }} →</span>
           </button>
         </div>
-        <p class="segment-footnote">Government and public-sector requests are handled through LODEX Enterprise. You can change this selection at any time.</p>
+        <p class="segment-footnote">Government and public-sector requests are handled through LODEX Enterprise.</p>
       </template>
 
       <template v-else>
