@@ -12,7 +12,7 @@ const segments = [
     key: 'home',
     title: 'LODEX Home',
     choice: 'My home',
-    image: '/lodex-home.webp',
+    image: '/lodex-home-card-v2.svg',
     description: 'Repairs, installations, improvements, renovations, and whole-home projects for homeowners.',
   },
   {
