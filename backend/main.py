@@ -839,15 +839,20 @@ Never ask for name, phone, email, street address, or appointment time in chat; t
         "required": ["covered_required", "response_kind", "target_requirement", "reply", "confidence", "recommended_tier"],
         "additionalProperties": False,
     }
+    deadline = time.monotonic() + 18
     for escalation_attempt in range(3):
         prompt_payload["current_model_tier"] = route["tier"]
         prompt = json.dumps(prompt_payload, ensure_ascii=False)
         try:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None, public_route(route)
             print(
                 f"LODEX qualification route={route['tier']} "
                 f"model={route['model']} effort={route['reasoning_effort']}"
             )
-            response = await client().responses.create(
+            response = await asyncio.wait_for(
+                client().responses.create(
                 model=route["model"],
                 reasoning={"effort": route["reasoning_effort"]},
                 input=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
@@ -859,6 +864,8 @@ Never ask for name, phone, email, street address, or appointment time in chat; t
                         "schema": schema,
                     }
                 },
+                ),
+                timeout=max(0.1, remaining),
             )
             decision = json.loads(response.output_text)
             if not isinstance(decision, dict):
