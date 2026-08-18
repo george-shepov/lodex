@@ -12,11 +12,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'script',
       includeAssets: [
-        'favicon-32x32.png',
-        'apple-touch-icon.png',
-        'lodex-icon-192.png',
-        'lodex-icon-512.png',
-        'lodex-icon-maskable-512.png',
+        'lodex-favicon-32-v2.png',
+        'lodex-apple-touch-icon-v2.png',
+        'lodex-app-icon-192-v2.png',
+        'lodex-app-icon-512-v2.png',
+        'lodex-app-icon-maskable-512-v2.png',
       ],
       manifest: {
         name: 'LODEX Home & Business Services',

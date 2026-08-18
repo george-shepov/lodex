@@ -78,14 +78,21 @@ onBeforeUnmount(() => {
     class="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] z-[100] w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-border bg-card/95 p-4 text-card-foreground shadow-2xl backdrop-blur"
     aria-label="Install LODEX"
   >
-    <div class="flex items-start justify-between gap-3">
+    <div class="flex items-start gap-3">
+      <img
+        src="/lodex-app-icon-192-v2.png"
+        alt="LODEX app icon"
+        class="h-16 w-16 shrink-0 rounded-2xl bg-[#0b0d10] object-contain p-1 shadow-lg ring-1 ring-white/10"
+        width="64"
+        height="64"
+      />
       <div class="min-w-0">
         <p class="text-sm font-semibold">Keep LODEX on your phone</p>
         <p class="mt-1 text-sm leading-5 text-muted-foreground">
           Install it like an app for faster project access and upcoming customer notifications.
         </p>
       </div>
-      <Button variant="ghost" size="icon" class="-mr-2 -mt-2 shrink-0" aria-label="Dismiss install suggestion" @click="dismiss">
+      <Button variant="ghost" size="icon" class="-mr-2 -mt-2 ml-auto shrink-0" aria-label="Dismiss install suggestion" @click="dismiss">
         <span aria-hidden="true" class="text-lg leading-none">×</span>
       </Button>
     </div>

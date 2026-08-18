@@ -148,7 +148,7 @@ function notifyOwner(event) {
       : `${event.payload.project_code || ''} ${event.payload.service_category || ''}`.trim()
   beep(event.type === 'support.requested' ? 920 : 680, event.type === 'support.requested' ? 0.28 : 0.16)
   if (alertsEnabled.value && 'Notification' in window && Notification.permission === 'granted') {
-    new Notification(titles[event.type], { body, icon: '/lodex-icon-192.png', tag: event.type === 'visitor.entered' ? 'lodex-visitor' : `${event.type}-${Date.now()}` })
+    new Notification(titles[event.type], { body, icon: '/lodex-app-icon-192-v2.png', tag: event.type === 'visitor.entered' ? 'lodex-visitor' : `${event.type}-${Date.now()}` })
   }
 }
 
