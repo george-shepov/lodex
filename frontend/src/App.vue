@@ -14,6 +14,8 @@ const description = ref('')
 const selectedFile = ref(null)
 const uploaded = ref(null)
 const sending = ref(false)
+const chatSending = ref(false)
+const uploadSending = ref(false)
 const agreed = ref(false)
 const intakeReady = ref(false)
 const handoffMessage = ref('')
@@ -536,29 +538,41 @@ async function readApiResponse(response, fallbackMessage) {
   if (!response.ok) throw new Error(data.detail || data.error || fallbackMessage)
   return data
 }
+async function fetchWithTimeout(resource, options = {}, timeoutMs = 25000) {
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(resource, { ...options, signal: controller.signal })
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error('The service took too long to respond. Please try again.')
+    throw error
+  } finally {
+    window.clearTimeout(timer)
+  }
+}
 async function upload() {
-  if (!selectedFile.value) return
+  if (!selectedFile.value || uploadSending.value) return
   const form = new FormData()
   form.append('file', selectedFile.value)
   form.append('description', description.value)
   form.append('service_category', selectedService.value?.title || '')
-  sending.value = true
+  uploadSending.value = true
   try {
-    const response = await fetch('/api/intake/upload', { method: 'POST', body: form })
+    const response = await fetchWithTimeout('/api/intake/upload', { method: 'POST', body: form }, 60000)
     const data = await readApiResponse(response, 'Upload failed.')
     uploaded.value = data
     add('assistant', `I received ${data.filename}.\n\n${data.analysis}`)
-  } catch (error) { add('assistant', error.message) } finally { sending.value = false }
+  } catch (error) { add('assistant', error.message) } finally { uploadSending.value = false }
 }
 async function send() {
   const text = message.value.trim()
-  if (!text || sending.value) return
+  if (!text || chatSending.value) return
   message.value = ''
   add('user', text)
-  sending.value = true
+  chatSending.value = true
   try {
     const conversation = serializeConversation(messages.value)
-    const response = await fetch('/api/intake/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, project_summary: summary.value, media_notes: uploaded.value ? `${uploaded.value.filename}: ${description.value}` : '', service_category: selectedService.value?.title || '', conversation }) })
+    const response = await fetchWithTimeout('/api/intake/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, project_summary: summary.value, media_notes: uploaded.value ? `${uploaded.value.filename}: ${description.value}` : '', service_category: selectedService.value?.title || '', conversation }) })
     const data = await readApiResponse(response, 'Unable to continue the scope review.')
     add('assistant', data.reply, data.question_kind)
     if (data.qualification) qualification.value = data.qualification
@@ -570,7 +584,7 @@ async function send() {
     } else {
       handoffMessage.value = ''
     }
-  } catch (error) { add('assistant', `${error.message} We can still collect the details and arrange a meet-and-greet.`) } finally { sending.value = false }
+  } catch (error) { add('assistant', `${error.message} We can still collect the details and arrange a meet-and-greet.`) } finally { chatSending.value = false }
 }
 async function book() {
   sending.value = true
@@ -868,8 +882,8 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); wind
       <section id="intake" class="intake-section"><div class="page-width"><div class="intake-head"><div><p class="eyebrow">Start your project</p><h2>Let’s figure out <em>what’s next.</em></h2><p class="intake-copy"><b>{{ segmentTitle }}</b><template v-if="customerSegment === 'home' && homeProjectSize"> · {{ homeProjectSize }} homeowner project</template><br/>Selected service: <b>{{ intakeTitle }}</b></p></div><div class="scope-meter"><div class="scope-meter-top"><span>{{ scopeLabel }}</span><b>{{ scopePercent }}%</b></div><div class="meter-track"><i :style="{ width: `${scopePercent}%` }"></i></div><small>{{ qualification.qualified ? 'The required facts are covered; useful extras can still improve the visit.' : 'Progress reflects the service facts we actually need—not the number of messages.' }}</small></div></div>
         <div class="service-chips" aria-label="Choose a service"><button v-for="service in services" :key="service.slug" type="button" :class="{ selected: selectedService?.slug === service.slug }" @click="chooseService(service, false)">{{ service.short }}</button></div>
         <div class="flow"><span :class="{ active: step === 'chat' }">1. Talk it through</span><span :class="{ active: step === 'schedule' }">2. Request a visit</span><span :class="{ active: step === 'done' }">3. Keep the details</span></div>
-        <div v-if="step === 'chat'" class="workspace"><div class="chat-card"><div class="chat-title"><i></i><div><b>LODEX project intake</b><small>Human-friendly questions, with AI help when useful.</small></div><button type="button" class="mini-link" @click="openSchedule">Request a visit ↗</button></div><div class="messages"><article v-for="(item, index) in messages" :key="index" :class="item.role"><p>{{ item.text }}</p></article><div v-if="sending" class="assistant"><p class="typing">Thinking through the project…</p></div></div><form class="composer" @submit.prevent="send"><textarea v-model="message" :disabled="sending" placeholder="For example: I need a TV mounted above a brick fireplace…" rows="3"></textarea><button type="submit" :disabled="sending || !message.trim()">Send</button></form></div>
-          <aside class="upload-card"><p class="eyebrow">Helpful, not required</p><h3>Show us the work area.</h3><p>Photos and short videos help us ask better questions. They do not create a final estimate.</p><label class="file-picker"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,video/mp4,video/quicktime,video/webm" @change="selectedFile = $event.target.files[0]"/><span>{{ selectedFile ? selectedFile.name : 'Choose photo or video' }}</span><b>＋</b></label><textarea v-model="description" placeholder="Anything we should notice?"></textarea><button type="button" class="outline-button" @click="upload" :disabled="!selectedFile || sending">{{ sending ? 'Uploading…' : 'Upload & analyze' }}</button><div v-if="qualification.requirements.length" class="qualification-checklist"><small>{{ qualification.label }}</small><ul><li v-for="item in qualification.requirements" :key="item.id" :class="{ covered: item.covered }"><span>{{ item.covered ? '✓' : '○' }}</span>{{ item.label }}</li></ul></div><label class="confirm"><input v-model="agreed" type="checkbox" :disabled="!hasCustomerMessage"/><span>I reviewed the captured scope and it is accurate to the best of my knowledge.</span></label><button type="button" class="ready-button" @click="openSchedule" :disabled="!canSchedule">{{ qualification.qualified ? 'Choose a visit time' : 'Continue to meet-and-greet' }} <span>↗</span></button></aside></div>
+        <div v-if="step === 'chat'" class="workspace"><div class="chat-card"><div class="chat-title"><i></i><div><b>LODEX project intake</b><small>Human-friendly questions, with AI help when useful.</small></div><button type="button" class="mini-link" @click="openSchedule">Request a visit ↗</button></div><div class="messages"><article v-for="(item, index) in messages" :key="index" :class="item.role"><p>{{ item.text }}</p></article><div v-if="chatSending" class="assistant"><p class="typing">Thinking through the project…</p></div></div><form class="composer" @submit.prevent="send"><textarea v-model="message" :disabled="chatSending" placeholder="For example: I need a TV mounted above a brick fireplace…" rows="3"></textarea><button type="submit" :disabled="chatSending || !message.trim()">Send</button></form></div>
+          <aside class="upload-card"><p class="eyebrow">Helpful, not required</p><h3>Show us the work area.</h3><p>Photos and short videos help us ask better questions. They do not create a final estimate.</p><label class="file-picker"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,video/mp4,video/quicktime,video/webm" @change="selectedFile = $event.target.files[0]"/><span>{{ selectedFile ? selectedFile.name : 'Choose photo or video' }}</span><b>＋</b></label><textarea v-model="description" placeholder="Anything we should notice?"></textarea><button type="button" class="outline-button" @click="upload" :disabled="!selectedFile || uploadSending">{{ uploadSending ? 'Uploading…' : 'Upload & analyze' }}</button><div v-if="qualification.requirements.length" class="qualification-checklist"><small>{{ qualification.label }}</small><ul><li v-for="item in qualification.requirements" :key="item.id" :class="{ covered: item.covered }"><span>{{ item.covered ? '✓' : '○' }}</span>{{ item.label }}</li></ul></div><label class="confirm"><input v-model="agreed" type="checkbox" :disabled="!hasCustomerMessage"/><span>I reviewed the captured scope and it is accurate to the best of my knowledge.</span></label><button type="button" class="ready-button" @click="openSchedule" :disabled="!canSchedule">{{ qualification.qualified ? 'Choose a visit time' : 'Continue to meet-and-greet' }} <span>↗</span></button></aside></div>
         <form v-else-if="step === 'schedule'" class="schedule-card" @submit.prevent="book"><div><p class="eyebrow">Next: a real-world check</p><h3>Request your meet-and-greet.</h3><p>{{ handoffMessage || 'Choose a preferred window. We’ll confirm the visit and clarify anything still unknown before a final price is set.' }}</p></div><div class="fields"><input v-model="appointment.name" required placeholder="Your name"/><input v-model="appointment.phone" required placeholder="Phone"/><input v-model="appointment.email" type="email" placeholder="Email (optional)"/><input v-model="appointment.address" required placeholder="Job address"/><input v-model="appointment.preferred_date" required type="date"/><select v-model="appointment.preferred_time" required><option disabled value="">Preferred arrival window</option><option>Morning · 9 AM–12 PM</option><option>Afternoon · 12 PM–3 PM</option><option>Late afternoon · 3 PM–6 PM</option></select></div><div class="schedule-actions"><button type="submit" class="primary-button" :disabled="sending">{{ sending ? 'Sending…' : 'Request meet-and-greet' }} <span>↗</span></button><button type="button" class="back-button" @click="step = 'chat'">Back to conversation</button></div><p v-if="notice" class="notice">{{ notice }}</p></form>
         <div v-else class="success-card"><img class="confirmation-logo" src="/lodex-logo-home-business.webp" alt="LODEX Home & Business Services"/><p class="eyebrow">Request received</p><h3>Everything we received is shown below.</h3><p>{{ notice }}</p><div v-if="projectCode" class="project-code"><span>Your project code</span><b>{{ projectCode }}</b><small>Save this code with the phone number you used. You can return to the project portal below.</small></div><div v-if="confirmation" class="assessment-summary"><b>{{ pricingMessage(confirmation) }}</b><small v-if="confirmation.visit_fee_cents">Your visit price reflects project type and route distance. The amount shown is calculated by LODEX on the server.</small><small v-else>We never invent mileage. LODEX will review the address and confirm the amount before payment.</small></div><div v-if="confirmation" class="confirmation-details"><div><span>Division</span><b>{{ SEGMENT_LABELS[confirmation.customer_segment] || 'LODEX' }}</b></div><div><span>Service</span><b>{{ confirmation.service_category }}</b></div><div><span>Preferred visit</span><b>{{ confirmation.preferred_date }} · {{ confirmation.preferred_time }}</b></div><div><span>Job address</span><b>{{ confirmation.address }}</b></div><div><span>Contact</span><b>{{ confirmation.name }} · {{ confirmation.phone }}<template v-if="confirmation.email"> · {{ confirmation.email }}</template></b></div><section><span>Project details</span><p>{{ confirmation.project_summary }}</p></section><section><span>Attachments</span><p v-if="confirmation.uploads?.length">{{ confirmation.uploads.map(file => file.filename).join(', ') }}</p><p v-else>No files attached.</p></section></div><div class="confirmation-actions"><button type="button" class="virtual-button" @click="openVirtualMeet">▣ Start a virtual meet-and-greet</button><div v-if="paymentStatus === 'paid'" class="payment-confirmed">Assessment payment recorded.</div><button v-else-if="paymentAvailable(confirmation)" type="button" class="primary-button" @click="startDeposit" :disabled="sending">{{ sending ? 'Opening secure checkout…' : `Pay ${confirmation.visit_fee_label || 'assessment'}` }} <span>↗</span></button></div><p v-if="paymentError" class="error">{{ paymentError }}</p><a class="text-link" href="#project">Open my project details →</a></div>
       </div></section>
