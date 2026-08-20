@@ -127,7 +127,226 @@ function changeSelection() {
 </template>
 
 <style scoped>
-.segment-gateway{position:fixed;inset:0;z-index:100000;overflow-y:auto;padding:clamp(10px,1.6vh,18px) 18px;background:radial-gradient(circle at 50% 0%,rgba(205,158,55,.2),transparent 34%),linear-gradient(145deg,rgba(6,8,11,.99),rgba(20,23,28,.99));color:#f5f7f8}.segment-shell{width:min(1180px,100%);margin:0 auto;text-align:center}.segment-logo{display:block;width:min(280px,42vw);max-height:82px;object-fit:contain;margin:0 auto 2px}.segment-kicker{margin:2px 0 2px;color:#e2b852;font-size:.68rem;font-weight:850;letter-spacing:.15em;text-transform:uppercase}h1{max-width:none;margin:0 auto 12px;font-size:clamp(2rem,3vw,3rem);line-height:1;letter-spacing:-.04em}.segment-intro{max-width:720px;margin:-4px auto 16px;color:#c8ccd2;line-height:1.45}.segment-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.segment-card,.home-size-card{display:flex;flex-direction:column;align-items:flex-start;gap:7px;border:1px solid rgba(217,174,77,.38);border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.025));color:inherit;text-align:left;cursor:pointer;box-shadow:0 18px 42px rgba(0,0,0,.25);transition:transform 160ms ease,border-color 160ms ease,background 160ms ease}.segment-card{min-height:0;padding:9px 11px 11px;overflow:hidden}.segment-art{display:block;width:100%;height:clamp(145px,22vh,180px);object-fit:contain;border-radius:12px;border:1px solid rgba(229,185,83,.3);background:#0b0d10;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}.segment-card:hover,.segment-card:focus-visible,.home-size-card:hover,.home-size-card:focus-visible{transform:translateY(-3px);border-color:rgba(244,196,86,.95);background:linear-gradient(180deg,rgba(217,174,77,.14),rgba(255,255,255,.04));outline:none}.segment-title{padding:1px 8px 0;color:#e2b852;font-size:.68rem;font-weight:850;letter-spacing:.11em;text-transform:uppercase}.segment-card strong{padding:0 8px;font-size:clamp(1.08rem,1.55vw,1.32rem);line-height:1.08}.segment-description{padding:0 8px;color:#c2c7cd;font-size:.9rem;line-height:1.35}.segment-choose{width:calc(100% - 16px);margin:auto 8px 0;padding-top:8px;border-top:1px solid rgba(255,255,255,.13);color:#f2c965;font-size:.92rem;font-weight:850}.segment-footnote{margin:8px 0 0;color:#969da5;font-size:.8rem}.segment-back{display:block;margin:0 auto 8px;border:0;background:none;color:#d7dde1;font-weight:750;cursor:pointer}.home-size-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.home-size-card{min-height:165px;padding:20px}.home-size-card strong{font-size:1.25rem;line-height:1.2}.home-size-card span{color:#bdc4ca;line-height:1.4}.home-size-card small{margin-top:auto;color:#edc663;font-weight:850}.segment-switcher{position:fixed;left:16px;bottom:16px;z-index:9000;display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid rgba(217,174,77,.48);border-radius:999px;background:rgba(12,14,18,.92);color:#f4f5f6;box-shadow:0 10px 28px rgba(0,0,0,.3);backdrop-filter:blur(12px);cursor:pointer}.segment-switcher span{font-weight:800}.segment-switcher small{color:#e4bd61}
-@media(min-width:980px){h1{white-space:nowrap}}
-@media(max-width:760px){.segment-gateway{padding:12px}.segment-logo{width:min(250px,72vw);max-height:76px}h1{margin-bottom:14px;font-size:clamp(2rem,8vw,3rem);line-height:1.02}.segment-grid,.home-size-grid{grid-template-columns:1fr}.segment-card{min-height:0;padding:10px 10px 15px}.segment-art{height:auto;aspect-ratio:1.16/1;object-fit:cover}.segment-title{font-size:.72rem}.segment-card strong{font-size:1.25rem}.segment-description{font-size:.94rem}.home-size-card{min-height:150px;padding:20px}.segment-switcher{right:12px;left:12px;justify-content:center}.segment-footnote{margin-top:12px}}
+.segment-gateway {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  overflow-y: auto;
+  padding: clamp(14px, 2vh, 26px) 22px;
+  background: radial-gradient(circle at 50% 0%, rgba(205, 158, 55, .2), transparent 34%), linear-gradient(145deg, rgba(6, 8, 11, .99), rgba(20, 23, 28, .99));
+  color: #f5f7f8;
+}
+
+.segment-shell {
+  width: min(1160px, 100%);
+  margin: 0 auto;
+  text-align: center;
+}
+
+.segment-logo {
+  display: block;
+  width: min(325px, 52vw);
+  max-height: 98px;
+  object-fit: contain;
+  margin: 0 auto 6px;
+}
+
+.segment-kicker {
+  margin: 5px 0 3px;
+  color: #e2b852;
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+h1 {
+  max-width: 1040px;
+  margin: 2px auto 18px;
+  font-size: clamp(2.2rem, 3.45vw, 3.45rem);
+  line-height: 1;
+  letter-spacing: -.04em;
+}
+
+.segment-intro {
+  max-width: 760px;
+  margin: -6px auto 22px;
+  color: #c8ccd2;
+  line-height: 1.5;
+}
+
+.segment-grid,
+.home-size-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.segment-card,
+.home-size-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  border: 1px solid rgba(217, 174, 77, .38);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .075), rgba(255, 255, 255, .025));
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, .27);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.segment-card {
+  min-height: 390px;
+  padding: 11px 13px 15px;
+  overflow: hidden;
+}
+
+.segment-art {
+  display: block;
+  width: 100%;
+  height: clamp(190px, 26vh, 235px);
+  object-fit: contain;
+  border-radius: 14px;
+  border: 1px solid rgba(229, 185, 83, .3);
+  background: #0b0d10;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .03);
+}
+
+.segment-card:hover,
+.segment-card:focus-visible,
+.home-size-card:hover,
+.home-size-card:focus-visible {
+  transform: translateY(-4px);
+  border-color: rgba(244, 196, 86, .95);
+  background: linear-gradient(180deg, rgba(217, 174, 77, .14), rgba(255, 255, 255, .04));
+  outline: none;
+}
+
+.segment-title {
+  padding: 2px 9px 0;
+  color: #e2b852;
+  font-size: .73rem;
+  font-weight: 850;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.segment-card strong {
+  padding: 0 9px;
+  font-size: clamp(1.16rem, 1.7vw, 1.48rem);
+  line-height: 1.12;
+}
+
+.segment-description {
+  padding: 0 9px;
+  color: #c2c7cd;
+  font-size: .94rem;
+  line-height: 1.42;
+}
+
+.segment-choose {
+  width: calc(100% - 18px);
+  margin: auto 9px 0;
+  padding-top: 11px;
+  border-top: 1px solid rgba(255, 255, 255, .13);
+  color: #f2c965;
+  font-size: .95rem;
+  font-weight: 850;
+}
+
+.segment-footnote {
+  margin: 13px 0 0;
+  color: #969da5;
+  font-size: .84rem;
+}
+
+.segment-back {
+  display: block;
+  margin: 0 auto 10px;
+  border: 0;
+  background: none;
+  color: #d7dde1;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.home-size-card {
+  min-height: 180px;
+  padding: 24px;
+}
+
+.home-size-card strong {
+  font-size: 1.32rem;
+  line-height: 1.22;
+}
+
+.home-size-card span {
+  color: #bdc4ca;
+  line-height: 1.45;
+}
+
+.home-size-card small {
+  margin-top: auto;
+  color: #edc663;
+  font-weight: 850;
+}
+
+.segment-switcher {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid rgba(217, 174, 77, .48);
+  border-radius: 999px;
+  background: rgba(12, 14, 18, .92);
+  color: #f4f5f6;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .3);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+}
+
+.segment-switcher span { font-weight: 800; }
+.segment-switcher small { color: #e4bd61; }
+
+@media (min-width: 980px) {
+  h1 { white-space: nowrap; }
+}
+
+/* Keep short laptop windows comfortable without shrinking the normal layout. */
+@media (min-width: 761px) and (max-height: 760px) {
+  .segment-gateway { padding-block: 8px; }
+  .segment-logo { width: min(275px, 44vw); max-height: 78px; margin-bottom: 2px; }
+  .segment-kicker { margin-block: 2px; font-size: .68rem; }
+  h1 { margin-bottom: 10px; font-size: clamp(2rem, 3vw, 3rem); }
+  .segment-grid { gap: 14px; }
+  .segment-card { min-height: 330px; gap: 7px; padding: 9px 11px 11px; }
+  .segment-art { height: clamp(160px, 24vh, 185px); border-radius: 12px; }
+  .segment-card strong { font-size: clamp(1.08rem, 1.55vw, 1.32rem); }
+  .segment-description { font-size: .88rem; line-height: 1.34; }
+  .segment-choose { padding-top: 8px; font-size: .92rem; }
+  .segment-footnote { margin-top: 8px; font-size: .8rem; }
+}
+
+@media (max-width: 760px) {
+  .segment-gateway { padding: 12px; }
+  .segment-logo { width: min(270px, 74vw); max-height: 82px; margin-bottom: 4px; }
+  h1 { margin-bottom: 16px; font-size: clamp(2rem, 8vw, 3rem); line-height: 1.02; }
+  .segment-grid,
+  .home-size-grid { grid-template-columns: 1fr; }
+  .segment-card { min-height: 0; padding: 10px 10px 16px; }
+  .segment-art { height: auto; aspect-ratio: 1.16 / 1; object-fit: cover; }
+  .segment-title { font-size: .72rem; }
+  .segment-card strong { font-size: 1.25rem; }
+  .segment-description { font-size: .94rem; }
+  .home-size-card { min-height: 150px; padding: 20px; }
+  .segment-switcher { right: 12px; left: 12px; justify-content: center; }
+  .segment-footnote { margin-top: 12px; }
+}
 </style>
