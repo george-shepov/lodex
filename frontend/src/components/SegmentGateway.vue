@@ -321,17 +321,17 @@ h1 {
 
 /* Keep short laptop windows comfortable without shrinking the normal layout. */
 @media (min-width: 761px) and (max-height: 760px) {
-  .segment-gateway { padding-block: 8px; }
-  .segment-logo { width: min(275px, 44vw); max-height: 78px; margin-bottom: 2px; }
-  .segment-kicker { margin-block: 2px; font-size: .68rem; }
-  h1 { margin-bottom: 10px; font-size: clamp(2rem, 3vw, 3rem); }
-  .segment-grid { gap: 14px; }
-  .segment-card { min-height: 330px; gap: 7px; padding: 9px 11px 11px; }
-  .segment-art { height: clamp(160px, 24vh, 185px); border-radius: 12px; }
-  .segment-card strong { font-size: clamp(1.08rem, 1.55vw, 1.32rem); }
-  .segment-description { font-size: .88rem; line-height: 1.34; }
-  .segment-choose { padding-top: 8px; font-size: .92rem; }
-  .segment-footnote { margin-top: 8px; font-size: .8rem; }
+  .segment-gateway { padding-block: 10px; }
+  .segment-logo { width: min(300px, 48vw); max-height: 88px; margin-bottom: 4px; }
+  .segment-kicker { margin-block: 3px; font-size: .7rem; }
+  h1 { margin-bottom: 14px; font-size: clamp(2.1rem, 3.2vw, 3.2rem); }
+  .segment-grid { gap: 15px; }
+  .segment-card { min-height: 360px; gap: 8px; padding: 10px 12px 13px; }
+  .segment-art { height: clamp(175px, 25vh, 205px); border-radius: 13px; }
+  .segment-card strong { font-size: clamp(1.12rem, 1.62vw, 1.4rem); }
+  .segment-description { font-size: .9rem; line-height: 1.38; }
+  .segment-choose { padding-top: 9px; font-size: .93rem; }
+  .segment-footnote { margin-top: 10px; font-size: .82rem; }
 }
 
 @media (max-width: 760px) {
