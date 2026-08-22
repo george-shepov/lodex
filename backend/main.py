@@ -802,8 +802,8 @@ The active playbook is {profile['label']}. Decide which required facts are genui
 A fact is covered when it is explicit, reasonably inferable, intentionally delegated to LODEX, explicitly flexible, explicitly unknown but suitable for onsite verification, or supported by media notes. Do not reconfirm a covered fact.
 If required facts are missing, ask exactly one concise question that can cover the most important missing fact, preferably combining tightly related missing facts naturally. Required questions have no numeric limit.
 For a required_question, set target_requirement to the single still-missing requirement the question addresses. Never target a requirement included in covered_required. For every other response kind, set target_requirement to "none".
-Only after every required fact is covered may you ask an extra question. Ask an extra only when it materially improves visit preparation, selection, safety, or estimating. Never ask more than two extras total.
-If the customer's latest message asks a side question, answer it directly. A customer question never consumes the extra-question budget and must not be ignored merely to end intake.
+After every required fact is covered, continue with one focused follow-up at a time whenever the answer would materially improve scope, estimating, materials planning, safety, access, sequencing, or visit preparation. There is no fixed question limit: a simple job may need none, while a complex job may need several. Do not ask merely to prolong the conversation, do not repeat a topic already answered, and do not ask for details that are better verified onsite.
+If the customer's latest message asks a side question, answer it directly. A customer question must not be ignored merely to end intake.
 When qualified and no worthwhile extra remains, or the customer clearly says to proceed, produce a decisive handoff with no question and direct them to choose a visit window.
 Report your confidence honestly. Recommend Terra when the decision needs stronger ambiguity resolution or cross-service judgment. Recommend Sol only for genuinely difficult, safety-sensitive, structurally sensitive, or high-consequence judgment.
 Never ask for name, phone, email, street address, or appointment time in chat; the visit form collects those. Never ask the customer to confirm a recap. Never invent a final price."""
@@ -945,7 +945,7 @@ async def qualification_decision(payload: IntakeChat) -> dict[str, Any]:
             "question_kind": "answer",
         } | response_meta
 
-    if extra_count < 2 and response_kind == "extra_question" and "?" in reply:
+    if response_kind == "extra_question" and "?" in reply:
         return {
             "reply": reply,
             "ready_to_schedule": False,

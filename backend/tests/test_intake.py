@@ -288,7 +288,7 @@ def test_general_priority_answer_is_covered_without_repeating_question(priority:
     assert "what matters most" not in body["reply"].lower()
 
 
-def test_qualified_lead_can_receive_two_useful_extra_questions(monkeypatch: pytest.MonkeyPatch):
+def test_qualified_lead_can_continue_receiving_useful_extra_questions(monkeypatch: pytest.MonkeyPatch):
     all_required = ["items_outcome", "quantity_spaces", "spending_rule", "acceptance_flexibility", "fulfillment"]
     captured = install_fake_ai(
         monkeypatch,
@@ -333,12 +333,12 @@ def test_qualified_lead_can_receive_two_useful_extra_questions(monkeypatch: pyte
         "/api/intake/chat",
         json={"message": conversation[-1]["text"], "project_summary": base, "service_category": "Shopping, Sourcing & Procurement", "conversation": conversation},
     ).json()
-    assert third["ready_to_schedule"] is True
-    assert third["question_kind"] == "handoff"
-    assert "?" not in third["reply"]
+    assert third["ready_to_schedule"] is False
+    assert third["question_kind"] == "extra"
+    assert "?" in third["reply"]
 
 
-def test_customer_side_question_is_answered_without_consuming_extra_budget(monkeypatch: pytest.MonkeyPatch):
+def test_customer_side_question_is_answered_without_ending_intake(monkeypatch: pytest.MonkeyPatch):
     all_required = ["items_outcome", "quantity_spaces", "spending_rule", "acceptance_flexibility", "fulfillment"]
     install_fake_ai(
         monkeypatch,
