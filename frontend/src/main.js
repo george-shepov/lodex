@@ -7,6 +7,7 @@ import { installLodexEnhancements } from './enhancements.js'
 import { withInferredIntakeService } from './intakeServiceInference.mjs'
 import { guardIntakeReply } from './intakeQuestionGuard.mjs'
 import { installChatReplyFocus } from './chatReplyFocus.mjs'
+import { installIOSCameraCompatibility } from './iosCameraCompatibility.mjs'
 import { createUploadAccumulator } from './uploadAccumulator.mjs'
 import { lzGalleryProjects } from './lzGallery'
 import { applyGalleryCuration } from './galleryCuration.mjs'
@@ -133,6 +134,7 @@ function installLodexRequestGuards() {
 // Stamp the current page with the build id and self-heal stale PWA/browser
 // caches when production moves to a newer build.
 installBuildVersionGuard()
+installIOSCameraCompatibility()
 
 applyGalleryCuration(lzGalleryProjects)
 installLodexRequestGuards()
