@@ -11,6 +11,8 @@ const QUESTION_TOPICS = [
   ['scope', /\b(?:scope|which parts?|included|involved|attention)\b/i],
 ]
 
+const MIN_QUALIFYING_QUESTIONS = 3
+
 export function normalizeQuestion(text) {
   return String(text || '')
     .toLowerCase()
@@ -51,18 +53,67 @@ export function customerWantsHandoff(text, previousQuestion = null) {
     || /\b(?:important detail|anything else)\b/i.test(priorText)
 }
 
-export function guardIntakeReply(requestPayload, responsePayload) {
-  if (!responsePayload || !['required', 'extra'].includes(responsePayload.question_kind)) {
-    return responsePayload
+function usefulUnusedQuestion(conversation) {
+  const transcript = conversation.map(turn => String(turn?.text || '')).join(' ')
+  const askedTopics = new Set(
+    conversation
+      .filter(turn => turn?.role === 'assistant' && String(turn?.text || '').includes('?'))
+      .map(turn => questionTopic(turn.text))
+      .filter(Boolean),
+  )
+
+  const candidates = [
+    ['scope', 'Which parts of the project should definitely be included in this visit?'],
+    ['quantity', 'About how many items, rooms, or areas are involved altogether?'],
+    ['access', 'Is there anything about access, height, utilities, tenants, or safety that we should plan around?'],
+    ['finish', 'Are there any materials, finishes, colors, or existing details we need to preserve or match?'],
+    ['timing', 'What timing are you aiming for—ASAP, a specific day, or flexible?'],
+    ['budget', 'Is there a spending target or priority we should keep in mind while planning the work?'],
+  ]
+
+  for (const [topic, question] of candidates) {
+    if (askedTopics.has(topic)) continue
+    const topicPattern = QUESTION_TOPICS.find(([name]) => name === topic)?.[1]
+    if (topicPattern && topicPattern.test(transcript)) continue
+    return question
   }
 
-  const reply = String(responsePayload.reply || '').trim()
-  if (!reply.includes('?')) return responsePayload
+  return 'Before we schedule, is there one more detail about the work, access, materials, or timing that would help us arrive better prepared?'
+}
+
+export function guardIntakeReply(requestPayload, responsePayload) {
+  if (!responsePayload) return responsePayload
 
   const conversation = Array.isArray(requestPayload?.conversation) ? requestPayload.conversation : []
   const latestCustomerMessage = [...conversation].reverse().find(turn => turn?.role === 'user')?.text
     || requestPayload?.message
   const previousQuestion = [...conversation].reverse().find(turn => turn?.role === 'assistant' && String(turn?.text || '').includes('?'))
+  const priorQuestions = conversation.length
+    ? conversation
+        .filter(turn => turn?.role === 'assistant' && String(turn?.text || '').includes('?'))
+        .map(turn => String(turn.text).trim())
+    : []
+
+  if (
+    responsePayload.ready_to_schedule
+    && responsePayload.question_kind === 'handoff'
+    && priorQuestions.length < MIN_QUALIFYING_QUESTIONS
+    && !customerWantsHandoff(latestCustomerMessage, previousQuestion)
+  ) {
+    return {
+      ...responsePayload,
+      reply: usefulUnusedQuestion(conversation),
+      ready_to_schedule: false,
+      question_kind: 'extra',
+    }
+  }
+
+  if (!['required', 'extra'].includes(responsePayload.question_kind)) {
+    return responsePayload
+  }
+
+  const reply = String(responsePayload.reply || '').trim()
+  if (!reply.includes('?')) return responsePayload
 
   if (customerWantsHandoff(latestCustomerMessage, previousQuestion)) {
     return {
@@ -72,12 +123,6 @@ export function guardIntakeReply(requestPayload, responsePayload) {
       question_kind: 'handoff',
     }
   }
-
-  const priorQuestions = conversation.length
-    ? conversation
-        .filter(turn => turn?.role === 'assistant' && String(turn?.text || '').includes('?'))
-        .map(turn => String(turn.text).trim())
-    : []
 
   if (!priorQuestions.length) return responsePayload
 
