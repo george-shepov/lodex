@@ -18,9 +18,9 @@ const secondAttempt = guardIntakeReply(
 )
 
 assert.notEqual(normalizeQuestion(secondAttempt.reply), normalizeQuestion(repeatedOutcome))
-assert.equal(secondAttempt.ready_to_schedule, true)
-assert.equal(secondAttempt.question_kind, 'handoff')
-assert.ok(!secondAttempt.reply.includes('?'))
+assert.equal(secondAttempt.ready_to_schedule, false)
+assert.equal(secondAttempt.question_kind, 'extra')
+assert.ok(secondAttempt.reply.includes('?'))
 
 const thirdAttempt = guardIntakeReply(
   {
@@ -28,7 +28,7 @@ const thirdAttempt = guardIntakeReply(
       { role: 'user', text: 'There is a Sephora store in Crocker Park. Their drawer is broken and comes loose.' },
       { role: 'assistant', text: repeatedOutcome, kind: 'required' },
       { role: 'user', text: 'Repair it' },
-      { role: 'assistant', text: secondAttempt.reply, kind: 'required' },
+      { role: 'assistant', text: secondAttempt.reply, kind: 'extra' },
       { role: 'user', text: 'Fix it tomorrow at 7:30am' },
     ],
   },
@@ -39,10 +39,34 @@ const thirdAttempt = guardIntakeReply(
   },
 )
 
-assert.equal(thirdAttempt.ready_to_schedule, true)
-assert.equal(thirdAttempt.question_kind, 'handoff')
-assert.ok(!thirdAttempt.reply.includes('?'))
-assert.match(thirdAttempt.reply, /repeat yourself/i)
+assert.equal(thirdAttempt.ready_to_schedule, false)
+assert.equal(thirdAttempt.question_kind, 'extra')
+assert.ok(thirdAttempt.reply.includes('?'))
+assert.notEqual(normalizeQuestion(thirdAttempt.reply), normalizeQuestion(repeatedOutcome))
+
+const sufficientlyQualifiedRepeat = guardIntakeReply(
+  {
+    conversation: [
+      { role: 'assistant', text: repeatedOutcome, kind: 'required' },
+      { role: 'user', text: 'Repair the drawer.' },
+      { role: 'assistant', text: 'Which parts of the project should definitely be included in this visit?', kind: 'extra' },
+      { role: 'user', text: 'Just the drawer.' },
+      { role: 'assistant', text: 'Is there anything about access, height, utilities, tenants, or safety that we should plan around?', kind: 'extra' },
+      { role: 'user', text: 'Store is open and first floor.' },
+      { role: 'assistant', text: 'What timing are you aiming for—ASAP, a specific day, or flexible?', kind: 'extra' },
+      { role: 'user', text: 'Tomorrow morning.' },
+    ],
+  },
+  {
+    reply: repeatedOutcome,
+    ready_to_schedule: false,
+    question_kind: 'required',
+  },
+)
+assert.equal(sufficientlyQualifiedRepeat.ready_to_schedule, true)
+assert.equal(sufficientlyQualifiedRepeat.question_kind, 'handoff')
+assert.ok(!sufficientlyQualifiedRepeat.reply.includes('?'))
+assert.match(sufficientlyQualifiedRepeat.reply, /repeat yourself/i)
 
 const accessVariant = guardIntakeReply(
   {
@@ -108,8 +132,10 @@ const exactGenericRepeat = guardIntakeReply(
   },
   { reply: genericQuestion, ready_to_schedule: false, question_kind: 'extra' },
 )
-assert.equal(exactGenericRepeat.ready_to_schedule, true)
-assert.equal(exactGenericRepeat.question_kind, 'handoff')
+assert.equal(exactGenericRepeat.ready_to_schedule, false)
+assert.equal(exactGenericRepeat.question_kind, 'extra')
+assert.ok(exactGenericRepeat.reply.includes('?'))
+assert.notEqual(normalizeQuestion(exactGenericRepeat.reply), normalizeQuestion(genericQuestion))
 
 const frustratedCustomer = guardIntakeReply(
   {
