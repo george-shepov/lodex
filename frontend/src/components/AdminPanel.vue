@@ -1,5 +1,6 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { APP_VERSION, BUILD_VERSION } from '../buildVersion.js'
 import LeadDesk from './LeadDesk.vue'
 
 const emit = defineEmits(['join-room'])
@@ -11,14 +12,20 @@ const error = ref('')
 const overview = ref({ active_visitors: [], project_requests: [], support_requests: [], counts: {} })
 const alertsEnabled = ref(false)
 const selectedMedia = ref(null)
+const supportPanel = ref(null)
+const supportFlash = ref(false)
 let eventSocket = null
 let refreshTimer = null
 let socketPing = null
 let audioContext = null
+let supportFlashTimer = null
+let titleRestoreTimer = null
+const normalTitle = document.title
 
 const activeVisitors = computed(() => overview.value.active_visitors || [])
 const projectRequests = computed(() => overview.value.project_requests || [])
 const supportRequests = computed(() => overview.value.support_requests || [])
+const shortBuild = computed(() => String(BUILD_VERSION).split('+').pop()?.slice(-8) || BUILD_VERSION)
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -118,6 +125,7 @@ async function enableAlerts() {
   if (audioContext.state === 'suspended') await audioContext.resume()
   if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission()
   alertsEnabled.value = true
+  try { localStorage.setItem('lodex-owner-alerts', 'enabled') } catch {}
   beep(740, 0.12)
 }
 
@@ -135,6 +143,21 @@ function beep(frequency = 680, duration = 0.18) {
   oscillator.stop(audioContext.currentTime + duration + 0.02)
 }
 
+async function spotlightSupport() {
+  supportFlash.value = false
+  await nextTick()
+  supportFlash.value = true
+  supportPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  try { window.focus() } catch {}
+  if (navigator.vibrate) navigator.vibrate([220, 100, 220, 100, 500])
+  window.clearTimeout(supportFlashTimer)
+  supportFlashTimer = window.setTimeout(() => { supportFlash.value = false }, 7000)
+
+  window.clearTimeout(titleRestoreTimer)
+  document.title = '🔴 LIVE SUPPORT · LODEX'
+  titleRestoreTimer = window.setTimeout(() => { document.title = normalTitle }, 12000)
+}
+
 function notifyOwner(event) {
   const titles = {
     'visitor.entered': 'Someone is on LODEX',
@@ -147,9 +170,17 @@ function notifyOwner(event) {
     : event.type === 'support.requested'
       ? `${event.payload.name || 'Visitor'} · room ${event.payload.room_code}`
       : `${event.payload.project_code || ''} ${event.payload.service_category || ''}`.trim()
-  beep(event.type === 'support.requested' ? 920 : 680, event.type === 'support.requested' ? 0.28 : 0.16)
+
+  if (event.type === 'support.requested') spotlightSupport()
+  beep(event.type === 'support.requested' ? 920 : 680, event.type === 'support.requested' ? 0.36 : 0.16)
   if (alertsEnabled.value && 'Notification' in window && Notification.permission === 'granted') {
-    new Notification(titles[event.type], { body, icon: '/lodex-app-icon-192-v2.png', tag: event.type === 'visitor.entered' ? 'lodex-visitor' : `${event.type}-${Date.now()}` })
+    const notification = new Notification(titles[event.type], {
+      body,
+      icon: '/lodex-app-icon-192-v2.png',
+      tag: event.type === 'visitor.entered' ? 'lodex-visitor' : `${event.type}-${Date.now()}`,
+      requireInteraction: event.type === 'support.requested',
+    })
+    if (event.type === 'support.requested') notification.onclick = () => { window.focus(); spotlightSupport(); notification.close() }
   }
 }
 
@@ -205,12 +236,16 @@ function formatMoney(cents) {
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
+  try { alertsEnabled.value = localStorage.getItem('lodex-owner-alerts') === 'enabled' && Notification?.permission === 'granted' } catch {}
   checkSession()
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
   disconnectEvents()
   window.clearInterval(refreshTimer)
+  window.clearTimeout(supportFlashTimer)
+  window.clearTimeout(titleRestoreTimer)
+  document.title = normalTitle
   if (audioContext) audioContext.close()
 })
 </script>
@@ -230,7 +265,7 @@ onBeforeUnmount(() => {
 
     <template v-else>
       <header class="admin-header">
-        <div><p class="eyebrow">LODEX owner dashboard</p><h1>Live work desk</h1></div>
+        <div><p class="eyebrow">LODEX owner dashboard</p><h1>Live work desk</h1><small class="admin-build">v{{ APP_VERSION }} · build {{ shortBuild }}</small></div>
         <div class="admin-header-actions"><button class="outline-button" type="button" @click="enableAlerts">{{ alertsEnabled ? 'Alerts enabled' : 'Enable phone alerts' }}</button><button class="back-button" type="button" @click="logout">Sign out</button></div>
       </header>
       <p v-if="error" class="admin-error">{{ error }}</p>
@@ -242,19 +277,19 @@ onBeforeUnmount(() => {
         <article><span>Waiting for video</span><b>{{ overview.counts?.waiting_support || 0 }}</b><small>Live support requests</small></article>
       </div>
 
-      <LeadDesk />
-
       <section class="admin-panel">
         <div class="admin-panel-heading"><div><p class="eyebrow">Right now</p><h2>Active visitors</h2></div><button class="outline-button" type="button" @click="loadOverview">Refresh</button></div>
         <div v-if="activeVisitors.length" class="admin-visitor-list"><article v-for="visitor in activeVisitors" :key="visitor.visitor_id"><i></i><div><b>{{ visitor.page_title || 'LODEX visitor' }}</b><span>{{ visitor.path }}</span></div><small>{{ formatDate(visitor.last_seen) }}</small></article></div>
         <p v-else class="admin-empty">Nobody is actively browsing right now.</p>
       </section>
 
-      <section class="admin-panel">
-        <div class="admin-panel-heading"><div><p class="eyebrow">Video support</p><h2>Call requests</h2></div></div>
+      <section ref="supportPanel" :class="['admin-panel', 'support-priority', { 'support-flash': supportFlash }]">
+        <div class="admin-panel-heading"><div><p class="eyebrow">Video support</p><h2>Call requests</h2></div><span v-if="supportRequests.some(item => item.status === 'waiting')" class="support-live-badge">LIVE</span></div>
         <div v-if="supportRequests.length" class="admin-support-grid"><article v-for="request in supportRequests" :key="request.id"><span>{{ request.status }}</span><h3>{{ request.name || 'Site visitor' }}</h3><p>{{ request.message || 'Requested a live video visit.' }}</p><small>{{ request.phone || 'No phone provided' }} · {{ formatDate(request.created_at) }}</small><button class="primary-button" type="button" @click="joinRoom(request.room_code)">Join {{ request.room_code }} <b>↗</b></button></article></div>
         <p v-else class="admin-empty">No live support requests yet.</p>
       </section>
+
+      <LeadDesk />
 
       <section class="admin-panel">
         <div class="admin-panel-heading"><div><p class="eyebrow">Customer inbox</p><h2>Project requests and messages</h2></div></div>
@@ -293,6 +328,11 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.admin-build { display:block; margin-top:6px; color:#829596; font-size:11px; letter-spacing:.04em; }
+.support-priority { scroll-margin-top: 24px; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.support-live-badge { padding:6px 10px; border-radius:999px; background:#ff554d; color:white; font-size:11px; font-weight:900; letter-spacing:.12em; }
+.support-flash { border-color:#ff554d !important; box-shadow:0 0 0 3px rgba(255,85,77,.25), 0 0 40px rgba(255,85,77,.28); animation:support-pulse .8s ease-in-out 5; }
+@keyframes support-pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.012); } }
 .admin-attachments {
   margin: 14px 0;
   padding: 13px;
