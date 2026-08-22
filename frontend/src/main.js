@@ -6,6 +6,7 @@ import { installBuildVersionGuard } from './buildVersion.js'
 import { installLodexEnhancements } from './enhancements.js'
 import { withInferredIntakeService } from './intakeServiceInference.mjs'
 import { guardIntakeReply } from './intakeQuestionGuard.mjs'
+import { installChatReplyFocus } from './chatReplyFocus.mjs'
 import { createUploadAccumulator } from './uploadAccumulator.mjs'
 import { lzGalleryProjects } from './lzGallery'
 import { applyGalleryCuration } from './galleryCuration.mjs'
@@ -138,6 +139,7 @@ installLodexRequestGuards()
 installVirtualRoomAlertGuard()
 createApp(App).mount('#app')
 installLodexEnhancements()
+installChatReplyFocus()
 
 const segmentRoot = document.createElement('div')
 segmentRoot.id = 'lodex-segment-gateway'
