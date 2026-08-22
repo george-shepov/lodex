@@ -4,6 +4,7 @@ import packageMetadata from '../package.json'
 import { lzGalleryProjects } from './lzGallery'
 import AdminPanel from './components/AdminPanel.vue'
 import { serializeConversation } from './conversationPayload.mjs'
+import { scrollConversationToEnd } from './chatScroll.mjs'
 import { readStoredHomeProjectSize, readStoredSegment, SEGMENT_LABELS } from './segmentState.mjs'
 
 const phone = '(440) 601-8001'
@@ -487,7 +488,7 @@ function selectGalleryFilter(category) {
 }
 function add(role, text, kind = null) {
   messages.value.push({ role, text, ...(kind ? { kind } : {}) })
-  nextTick(() => document.querySelector('.messages')?.scrollTo({ top: 99999, behavior: 'smooth' }))
+  nextTick(() => scrollConversationToEnd(document.querySelector('.messages')))
 }
 function scrollToIntake() { document.querySelector('#intake')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
 function goHome(hash = '') {
