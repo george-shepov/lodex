@@ -16,6 +16,30 @@ import './virtual.css'
 import './enhancements.css'
 import './admin.css'
 
+function installVirtualRoomAlertGuard() {
+  const NativeWebSocket = window.WebSocket
+  if (!NativeWebSocket) return
+
+  window.WebSocket = class LodexWebSocket extends NativeWebSocket {
+    constructor(url, protocols) {
+      const value = String(url || '')
+      const match = value.match(/\/api\/virtual\/rooms\/([^/?#]+)/i)
+      if (match && window.location.pathname !== '/admin') {
+        const roomCode = decodeURIComponent(match[1]).trim().toUpperCase()
+        if (roomCode) {
+          fetch('/api/support/virtual-room', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ room_code: roomCode }),
+            keepalive: true,
+          }).catch(() => {})
+        }
+      }
+      super(url, protocols)
+    }
+  }
+}
+
 function installLodexRequestGuards() {
   const nativeFetch = window.fetch.bind(window)
   const uploadAccumulator = createUploadAccumulator(window.sessionStorage)
@@ -111,6 +135,7 @@ installBuildVersionGuard()
 
 applyGalleryCuration(lzGalleryProjects)
 installLodexRequestGuards()
+installVirtualRoomAlertGuard()
 createApp(App).mount('#app')
 installLodexEnhancements()
 
