@@ -4,11 +4,16 @@ from fastapi import Depends, HTTPException
 from fastapi.responses import FileResponse
 
 import main
+from virtual_alerts import VirtualRoomAlertMiddleware
 
 app = main.app
 
 # Register the persistent admin lead/CRM routes on the same FastAPI app.
 import leads  # noqa: E402,F401
+
+# Customer virtual-room joins must alert the operator even when the customer
+# did not enter through the explicit live-support form.
+app.add_middleware(VirtualRoomAlertMiddleware)
 
 
 def find_upload_record(upload_id: str):
