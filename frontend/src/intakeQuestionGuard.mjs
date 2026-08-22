@@ -11,7 +11,10 @@ const QUESTION_TOPICS = [
   ['scope', /\b(?:scope|which parts?|included|involved|attention)\b/i],
 ]
 
-const MIN_QUALIFYING_QUESTIONS = 3
+// LODEX is a lead closer, not a two-question demo. A model may cover several
+// requirements in one answer, but we still want a useful discovery conversation
+// before silently moving the customer into scheduling.
+const MIN_QUALIFYING_QUESTIONS = 4
 
 export function normalizeQuestion(text) {
   return String(text || '')
@@ -81,6 +84,15 @@ function usefulUnusedQuestion(conversation) {
   return 'Before we schedule, is there one more detail about the work, access, materials, or timing that would help us arrive better prepared?'
 }
 
+function continueInsteadOfHandoff(responsePayload, conversation) {
+  return {
+    ...responsePayload,
+    reply: usefulUnusedQuestion(conversation),
+    ready_to_schedule: false,
+    question_kind: 'extra',
+  }
+}
+
 export function guardIntakeReply(requestPayload, responsePayload) {
   if (!responsePayload) return responsePayload
 
@@ -100,12 +112,7 @@ export function guardIntakeReply(requestPayload, responsePayload) {
     && priorQuestions.length < MIN_QUALIFYING_QUESTIONS
     && !customerWantsHandoff(latestCustomerMessage, previousQuestion)
   ) {
-    return {
-      ...responsePayload,
-      reply: usefulUnusedQuestion(conversation),
-      ready_to_schedule: false,
-      question_kind: 'extra',
-    }
+    return continueInsteadOfHandoff(responsePayload, conversation)
   }
 
   if (!['required', 'extra'].includes(responsePayload.question_kind)) {
@@ -133,7 +140,12 @@ export function guardIntakeReply(requestPayload, responsePayload) {
     ? priorQuestions.filter(question => questionTopic(question) === topic).length
     : 0
 
+  // Repetition should change lanes, not terminate the lead. Only allow the
+  // schedule handoff after a sufficiently useful conversation has happened.
   if (exactPrior >= 1 || (topic && sameTopicPrior >= 2)) {
+    if (priorQuestions.length < MIN_QUALIFYING_QUESTIONS) {
+      return continueInsteadOfHandoff(responsePayload, conversation)
+    }
     return {
       ...responsePayload,
       reply: "I won't make you repeat yourself. We can verify that detail during the visit—choose a preferred visit window below.",
@@ -145,6 +157,9 @@ export function guardIntakeReply(requestPayload, responsePayload) {
   if (topic && sameTopicPrior >= 1) {
     let rephrased = rephraseRepeatedQuestion(reply, topic)
     if (normalizeQuestion(rephrased) === normalized) {
+      if (priorQuestions.length < MIN_QUALIFYING_QUESTIONS) {
+        return continueInsteadOfHandoff(responsePayload, conversation)
+      }
       return {
         ...responsePayload,
         reply: "I won't make you repeat yourself. We can verify that detail during the visit—choose a preferred visit window below.",
