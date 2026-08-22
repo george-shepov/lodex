@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import InstallLodex from './components/InstallLodex.vue'
 import SegmentGateway from './components/SegmentGateway.vue'
+import { installBuildVersionGuard } from './buildVersion.js'
 import { installLodexEnhancements } from './enhancements.js'
 import { withInferredIntakeService } from './intakeServiceInference.mjs'
 import { guardIntakeReply } from './intakeQuestionGuard.mjs'
@@ -103,6 +104,10 @@ function installLodexRequestGuards() {
     }
   }
 }
+
+// Stamp the current page with the build id and self-heal stale PWA/browser
+// caches when production moves to a newer build.
+installBuildVersionGuard()
 
 applyGalleryCuration(lzGalleryProjects)
 installLodexRequestGuards()
