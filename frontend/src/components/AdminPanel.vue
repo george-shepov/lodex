@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import LeadDesk from './LeadDesk.vue'
 
 const emit = defineEmits(['join-room'])
 
@@ -240,6 +241,8 @@ onBeforeUnmount(() => {
         <article><span>Project requests</span><b>{{ overview.counts?.projects || 0 }}</b><small>Latest 100 shown below</small></article>
         <article><span>Waiting for video</span><b>{{ overview.counts?.waiting_support || 0 }}</b><small>Live support requests</small></article>
       </div>
+
+      <LeadDesk />
 
       <section class="admin-panel">
         <div class="admin-panel-heading"><div><p class="eyebrow">Right now</p><h2>Active visitors</h2></div><button class="outline-button" type="button" @click="loadOverview">Refresh</button></div>
