@@ -7,6 +7,9 @@ import main
 
 app = main.app
 
+# Register the persistent admin lead/CRM routes on the same FastAPI app.
+import leads  # noqa: E402,F401
+
 
 def find_upload_record(upload_id: str):
     for record in reversed(main.load_jsonl(main.UPLOAD_DIR.parent / 'uploads.jsonl')):
