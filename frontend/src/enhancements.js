@@ -597,6 +597,23 @@ export function installLodexEnhancements() {
   }
 
   apply()
-  const observer = new MutationObserver(apply)
-  observer.observe(document.body, { childList: true, subtree: true })
+
+  const observerOptions = { childList: true, subtree: true }
+  let applyScheduled = false
+  const observer = new MutationObserver(() => {
+    if (applyScheduled) return
+    applyScheduled = true
+    window.requestAnimationFrame(() => {
+      // Enhancement code may add its own nodes. Ignore those mutations so a
+      // chat render cannot recursively schedule more whole-page enhancement passes.
+      observer.disconnect()
+      try {
+        apply()
+      } finally {
+        observer.observe(document.body, observerOptions)
+        applyScheduled = false
+      }
+    })
+  })
+  observer.observe(document.body, observerOptions)
 }
