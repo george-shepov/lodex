@@ -58,11 +58,12 @@ jobs:
           git fetch origin main
 
           # Refuse to deploy over source or configuration that exists only on
-          # the VPS. Ignored runtime state (.env.local, data/, build output)
-          # remains outside this check by design.
-          # This legacy VPS-only environment file contains runtime settings,
-          # not source, and is intentionally never committed.
-          vps_changes="$(git status --porcelain --untracked-files=all | grep -v '^?? \.lodex-db\.env$' || true)"
+          # the VPS. Ignore known runtime state plus disposable editor swap
+          # files, which are not source and must never block production deploys.
+          vps_changes="$(git status --porcelain --untracked-files=all \
+            | grep -v '^?? \.lodex-db\.env$' \
+            | grep -Ev '^\?\? .*\.sw[ponx]$' \
+            || true)"
           if [ -n "$vps_changes" ]; then
             echo 'VPS checkout contains changes that are not in GitHub:' >&2
             printf '%s\n' "$vps_changes" >&2
