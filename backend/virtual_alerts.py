@@ -1,11 +1,10 @@
 """Operator alerts for customer virtual-room joins.
 
-A customer can enter a virtual room from several places in the UI.  Some of
+A customer can enter a virtual room from several places in the UI. Some of
 those paths historically opened the WebSocket directly without first creating
 an /api/support/call record, so the owner dashboard had nothing to display.
-This ASGI middleware makes the room connection itself authoritative: every
-customer room join creates (or reuses) a waiting support request and emits the
-same admin event as the explicit support form.
+This module provides both a WebSocket middleware safety net and an explicit
+HTTP alert endpoint that the customer UI can call before opening the room.
 """
 
 import time
@@ -13,10 +12,17 @@ import uuid
 from http.cookies import SimpleCookie
 from urllib.parse import unquote
 
+from fastapi import HTTPException
+from pydantic import BaseModel, Field
+
 import main
 
 
 RECENT_ALERT_SECONDS = 120
+
+
+class VirtualRoomAlertRequest(BaseModel):
+    room_code: str = Field(min_length=1, max_length=120)
 
 
 def _admin_session_from_scope(scope) -> str | None:
@@ -48,9 +54,9 @@ def _recent_request(room_code: str) -> bool:
     return False
 
 
-async def _alert_operator(room_code: str) -> None:
+async def _alert_operator(room_code: str) -> bool:
     if _recent_request(room_code):
-        return
+        return False
     record = {
         "id": uuid.uuid4().hex,
         "visitor_id": "virtual-room",
@@ -74,6 +80,16 @@ async def _alert_operator(room_code: str) -> None:
             "message": record["message"],
         },
     )
+    return True
+
+
+@main.app.post("/api/support/virtual-room", include_in_schema=False)
+async def virtual_room_alert(payload: VirtualRoomAlertRequest):
+    room_code = payload.room_code.strip().upper()
+    if not room_code:
+        raise HTTPException(400, "Room code is required.")
+    created = await _alert_operator(room_code)
+    return {"ok": True, "created": created, "room_code": room_code}
 
 
 class VirtualRoomAlertMiddleware:
