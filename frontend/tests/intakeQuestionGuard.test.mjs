@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { guardIntakeReply, normalizeQuestion } from '../src/intakeQuestionGuard.mjs'
+import { applyQualificationProgressFloor, guardIntakeReply, normalizeQuestion } from '../src/intakeQuestionGuard.mjs'
 
 const repeatedOutcome = 'What would you like LODEX to accomplish?'
 const secondAttempt = guardIntakeReply(
@@ -150,5 +150,36 @@ const frustratedCustomer = guardIntakeReply(
 assert.equal(frustratedCustomer.ready_to_schedule, true)
 assert.equal(frustratedCustomer.question_kind, 'handoff')
 assert.ok(!frustratedCustomer.reply.includes('?'))
+
+const frozenQualification = {
+  reply: 'What timing are you aiming for?',
+  ready_to_schedule: false,
+  question_kind: 'required',
+  qualification: {
+    progress: 0,
+    qualified: false,
+    requirements: [
+      { id: 'scope', covered: false },
+      { id: 'access', covered: false },
+      { id: 'timing', covered: false },
+      { id: 'priority', covered: false },
+    ],
+  },
+}
+const shedConversation = [
+  { role: 'user', text: 'I would like to build a shed behind my business.' },
+  { role: 'assistant', text: 'Roughly what size or dimensions are we working with?', kind: 'required' },
+  { role: 'user', text: 'About 12 by 16 feet.' },
+  { role: 'assistant', text: 'Is access straightforward, or is there anything onsite we should plan around?', kind: 'required' },
+  { role: 'user', text: 'Back lot is open and easy to reach.' },
+]
+const recoveredQualification = applyQualificationProgressFloor(frozenQualification, shedConversation)
+assert.equal(recoveredQualification.qualification.progress, 50)
+
+const realServerProgress = applyQualificationProgressFloor(
+  { ...frozenQualification, qualification: { ...frozenQualification.qualification, progress: 25 } },
+  shedConversation,
+)
+assert.equal(realServerProgress.qualification.progress, 25)
 
 console.log('intake question repetition guard checks passed')
