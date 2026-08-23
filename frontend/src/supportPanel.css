@@ -1,0 +1,41 @@
+.support-popover .support-video-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.support-popover .support-video-form .support-input {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.support-popover .support-video-form button {
+  width: 100%;
+  min-height: 44px;
+}
+
+.support-popover > form:not(.support-video-form) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+
+.support-popover > form:not(.support-video-form) .support-input {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 420px) {
+  .support-popover > form:not(.support-video-form) {
+    grid-template-columns: 1fr;
+  }
+
+  .support-popover > form:not(.support-video-form) button {
+    width: 100%;
+  }
+}
