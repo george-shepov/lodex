@@ -6,7 +6,7 @@
 
 Customer-facing project intake for LODEX Home, Business, and Enterprise: a visitor chooses the right division, describes the work, uploads a photo/video, confirms the working assumptions in chat, and requests the appropriate next step.
 
-The intake uses service-specific qualification playbooks. Required questions continue until the facts needed for that service are covered; after qualification, the assistant may ask at most two material extras. Customer side questions are answered directly and never consume that extra-question budget.
+The intake uses service-specific qualification playbooks. Required questions continue until the facts needed for that service are covered; after qualification, the assistant continues one focused question at a time whenever the answer materially improves scope, estimating, materials, access, safety, sequencing, visit preparation, or customer confidence. There is no fixed question ceiling: simple jobs can move forward quickly, while complex leads can receive the deeper qualification needed to close well. Customer side questions are answered directly rather than being ignored to end intake.
 
 AI requests use the Responses API with a three-tier GPT-5.6 router. Luna with medium reasoning handles ordinary intake and image review. Cross-service, property-strategy, ambiguous, or unusually long cases escalate to Terra with high reasoning. Safety-sensitive and structurally consequential cases escalate to Sol with xhigh reasoning. The qualification model may also recommend an upward escalation when the initial route needs stronger judgment; routes never downgrade within a request.
 
@@ -39,3 +39,5 @@ The API intentionally never represents an AI response as a final estimate. Image
 ## Deploy
 
 Use one edge proxy for public HTTPS. Route `lodex.giorgiy.org` to the web container and proxy `/api/` to the API container. Put `OPENAI_API_KEY` in the VPS vault / runtime environment—never in GitHub or browser code.
+
+Codex contributors and VPS operators must also follow [`AGENTS.md`](AGENTS.md) and [`docs/CODEX-OPERATIONS.md`](docs/CODEX-OPERATIONS.md).
