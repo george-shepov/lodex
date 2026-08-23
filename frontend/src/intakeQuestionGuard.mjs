@@ -56,6 +56,44 @@ export function customerWantsHandoff(text, previousQuestion = null) {
     || /\b(?:important detail|anything else)\b/i.test(priorText)
 }
 
+function answeredQuestionCount(conversation) {
+  const answered = new Set()
+  for (let index = 0; index < conversation.length - 1; index += 1) {
+    const question = conversation[index]
+    const answer = conversation[index + 1]
+    if (question?.role !== 'assistant' || !String(question?.text || '').includes('?')) continue
+    if (answer?.role !== 'user' || !String(answer?.text || '').trim()) continue
+    const topic = questionTopic(question.text)
+    answered.add(topic || normalizeQuestion(question.text))
+  }
+  return answered.size
+}
+
+export function applyQualificationProgressFloor(responsePayload, conversation = []) {
+  const qualification = responsePayload?.qualification
+  const requirements = Array.isArray(qualification?.requirements) ? qualification.requirements : []
+  const progress = Number(qualification?.progress || 0)
+  if (!qualification || qualification.qualified || progress > 0 || !requirements.length) return responsePayload
+
+  // Recovery path for degraded/stale qualification responses. If the customer has
+  // actually answered distinct discovery questions, a frozen 0% meter is false.
+  // The server remains authoritative whenever it reports any real progress.
+  const answered = answeredQuestionCount(conversation)
+  if (!answered) return responsePayload
+
+  const recovered = Math.min(
+    95,
+    Math.max(1, Math.round(100 * Math.min(answered, requirements.length) / requirements.length)),
+  )
+  return {
+    ...responsePayload,
+    qualification: {
+      ...qualification,
+      progress: recovered,
+    },
+  }
+}
+
 function usefulUnusedQuestion(conversation) {
   const transcript = conversation.map(turn => String(turn?.text || '')).join(' ')
   const askedTopics = new Set(
@@ -93,10 +131,11 @@ function continueInsteadOfHandoff(responsePayload, conversation) {
   }
 }
 
-export function guardIntakeReply(requestPayload, responsePayload) {
-  if (!responsePayload) return responsePayload
+export function guardIntakeReply(requestPayload, rawResponsePayload) {
+  if (!rawResponsePayload) return rawResponsePayload
 
   const conversation = Array.isArray(requestPayload?.conversation) ? requestPayload.conversation : []
+  const responsePayload = applyQualificationProgressFloor(rawResponsePayload, conversation)
   const latestCustomerMessage = [...conversation].reverse().find(turn => turn?.role === 'user')?.text
     || requestPayload?.message
   const previousQuestion = [...conversation].reverse().find(turn => turn?.role === 'assistant' && String(turn?.text || '').includes('?'))
