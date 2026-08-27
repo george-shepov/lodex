@@ -54,13 +54,13 @@ test('confidence advances for distinct answered questions while API remains froz
   await openIntake(page)
 
   await answer(page, 'I need a 12 by 16 foot shed behind my business.')
-  await expect(page.locator('.scope-meter-top b')).toHaveText('0%')
-
-  await answer(page, 'The shed should be about 12 by 16 feet.')
   await expect(page.locator('.scope-meter-top b')).toHaveText('25%')
 
-  await answer(page, 'The back lot is open and easy to reach.')
+  await answer(page, 'The shed should be about 12 by 16 feet.')
   await expect(page.locator('.scope-meter-top b')).toHaveText('50%')
+
+  await answer(page, 'The back lot is open and easy to reach.')
+  await expect(page.locator('.scope-meter-top b')).toHaveText('75%')
 })
 
 test('@demo records the LODEX confidence story', async ({ page }) => {
