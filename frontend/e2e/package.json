@@ -1,0 +1,11 @@
+{
+  "name": "lodex-browser-tests",
+  "private": true,
+  "scripts": {
+    "test": "playwright test --project=chromium",
+    "demo": "playwright test --project=demo --grep @demo"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}
