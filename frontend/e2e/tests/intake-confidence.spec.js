@@ -38,6 +38,9 @@ async function mockFrozenQualification(page) {
 
 async function openIntake(page, { live = false } = {}) {
   if (!live) await mockFrozenQualification(page)
+  await page.addInitScript(() => {
+    window.localStorage.setItem('lodex-customer-segment-v1', 'business')
+  })
   await page.goto('/#intake')
   await page.locator('#intake').scrollIntoViewIfNeeded()
   await expect(page.locator('.scope-meter-top b')).toHaveText('0%')
