@@ -28,7 +28,7 @@ jobs:
         working-directory: frontend
         run: npm ci
       - name: Install browser tests
-        run: npm install
+        run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run confidence-meter smoke test
