@@ -1,0 +1,62 @@
+name: Guardian - CI triage
+
+on:
+  workflow_run:
+    workflows: ["*"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  triage:
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.name != 'Guardian - CI triage'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or update failure issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              owner,
+              repo,
+              run_id: run.id,
+              per_page: 100,
+            });
+            const failed = jobs.filter(j => ['failure','cancelled','timed_out'].includes(j.conclusion));
+            const title = `[Guardian] ${run.name} failed on ${run.head_branch || 'unknown branch'}`;
+            const marker = `<!-- guardian-run:${run.id} -->`;
+            const body = [
+              marker,
+              `## Build failure triage`,
+              `- Workflow: **${run.name}**`,
+              `- Branch: \`${run.head_branch || 'unknown'}\``,
+              `- Commit: \`${run.head_sha}\``,
+              `- Actor: @${run.actor?.login || 'unknown'}`,
+              `- Run: ${run.html_url}`,
+              '',
+              '### Failed jobs',
+              ...failed.map(j => `- **${j.name}** — ${j.html_url}`),
+              '',
+              '### Guardian handoff',
+              'Ask the repo agent to inspect the failed-job logs, identify the first causal failure (not downstream noise), propose the smallest safe fix, and list the exact validation commands from AGENTS.md.',
+              '',
+              '> This workflow intentionally does not auto-commit fixes. Repair remains review-gated.',
+            ].join('\n');
+
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', per_page: 100,
+            });
+            const match = existing.find(i => i.body?.includes(marker));
+            if (match) {
+              await github.rest.issues.update({ owner, repo, issue_number: match.number, title, body });
+            } else {
+              await github.rest.issues.create({ owner, repo, title, body, labels: ['bug'] });
+            }
