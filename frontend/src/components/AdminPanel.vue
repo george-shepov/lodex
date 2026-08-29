@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { APP_VERSION, BUILD_VERSION } from '../buildVersion.js'
+import AdminConceptCatalog from './AdminConceptCatalog.vue'
 import LeadDesk from './LeadDesk.vue'
 
 const emit = defineEmits(['join-room'])
@@ -288,6 +289,8 @@ onBeforeUnmount(() => {
         <div v-if="supportRequests.length" class="admin-support-grid"><article v-for="request in supportRequests" :key="request.id"><span>{{ request.status }}</span><h3>{{ request.name || 'Site visitor' }}</h3><p>{{ request.message || 'Requested a live video visit.' }}</p><small>{{ request.phone || 'No phone provided' }} · {{ formatDate(request.created_at) }}</small><button class="primary-button" type="button" @click="joinRoom(request.room_code)">Join {{ request.room_code }} <b>↗</b></button></article></div>
         <p v-else class="admin-empty">No live support requests yet.</p>
       </section>
+
+      <AdminConceptCatalog />
 
       <LeadDesk />
 

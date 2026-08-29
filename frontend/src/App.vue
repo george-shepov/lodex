@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import packageMetadata from '../package.json'
 import { lzGalleryProjects } from './lzGallery'
 import AdminPanel from './components/AdminPanel.vue'
+import ConceptPage from './components/ConceptPage.vue'
 import { serializeConversation } from './conversationPayload.mjs'
 import { scrollConversationToEnd } from './chatScroll.mjs'
 import { readStoredHomeProjectSize, readStoredSegment, SEGMENT_LABELS } from './segmentState.mjs'
@@ -356,8 +357,11 @@ const messages = ref([{ role: 'assistant', text: 'What can LODEX take off your p
 const activeService = computed(() => services.find(service => currentPath.value.replace(/\/$/, '') === `/services/${service.slug}`) || null)
 const isInspirationPage = computed(() => currentPath.value.replace(/\/$/, '') === '/inspiration')
 const isAdminPage = computed(() => currentPath.value.replace(/\/$/, '') === '/admin')
+const designRoute = computed(() => currentPath.value.match(/^\/designs\/[^/]+\/([^/]+)\/?$/))
+const isConceptPage = computed(() => Boolean(designRoute.value))
+const activeConceptSlug = computed(() => designRoute.value?.[1] || '')
 const activeLegalPage = computed(() => legalPages[currentPath.value.replace(/\/$/, '')] || null)
-const isHomePage = computed(() => !activeService.value && !isInspirationPage.value && !isAdminPage.value && !activeLegalPage.value)
+const isHomePage = computed(() => !activeService.value && !isInspirationPage.value && !isAdminPage.value && !isConceptPage.value && !activeLegalPage.value)
 const homeHeroSlide = computed(() => homeHeroSlides[homeHeroSlideIndex.value] || homeHeroSlides[0])
 const activeHeroImage = computed(() => serviceHeroSlides.value[serviceHeroSlideIndex.value] || null)
 const availableGalleryProjects = computed(() => lzGalleryProjects.filter(project => !hiddenGallerySources.value.has(project.src)))
@@ -501,6 +505,11 @@ function navigate(path) {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 function openService(service) { navigate(serviceHref(service)) }
+function customizeConcept(concept) {
+  navigate('/')
+  message.value = `I want to customize the ${concept.name} concept. `
+  nextTick(() => { scrollToIntake(); document.querySelector('.composer textarea')?.focus() })
+}
 function chooseService(service, focus = true) {
   selectedService.value = service
   message.value = service.starter
@@ -796,6 +805,8 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); wind
     </nav>
 
     <AdminPanel v-if="isAdminPage" @join-room="openVirtualMeet" />
+
+    <ConceptPage v-else-if="isConceptPage" :slug="activeConceptSlug" @back="navigate('/inspiration')" @start="customizeConcept" />
 
     <template v-else-if="activeService">
       <section class="service-hero page-width">
