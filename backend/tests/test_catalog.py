@@ -113,6 +113,33 @@ def test_catalog_markup_is_fixed_precision_and_honors_minimum():
     ) == 900
 
 
+def test_catalog_rejects_invalid_lead_time_and_currency(catalog_app):
+    _ = catalog_app
+
+    async def scenario():
+        transport = httpx.ASGITransport(app=admin_media.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            assert (await client.post("/api/admin/login", json={"token": "owner-token-for-tests"})).status_code == 200
+
+            invalid_lead_time = concept_payload() | {
+                "lead_time_min_days": 60,
+                "lead_time_max_days": 30,
+            }
+            lead_time_response = await client.post("/api/admin/concepts", json=invalid_lead_time)
+            assert lead_time_response.status_code == 422
+            assert "lead_time_min_days must not exceed lead_time_max_days" in lead_time_response.text
+
+            invalid_currency = concept_payload()
+            invalid_currency["components"][0]["offer"]["currency"] = "EUR"
+            currency_response = await client.post("/api/admin/concepts", json=invalid_currency)
+            assert currency_response.status_code == 422
+            currency_error = currency_response.json()["detail"][0]
+            assert currency_error["loc"][-1] == "currency"
+            assert currency_error["ctx"]["expected"] == "'USD'"
+
+    run(scenario())
+
+
 def test_concept_public_boundary_and_quote_snapshot_are_immutable(catalog_app):
     _ = catalog_app
 

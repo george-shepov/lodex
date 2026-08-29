@@ -9,7 +9,7 @@ from typing import Any, Literal, Protocol
 from urllib.parse import urlparse
 
 from fastapi import Depends, HTTPException, Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 import main
 from catalog_pricing import calculate_concept_pricing
@@ -69,7 +69,7 @@ class ManualOfferInput(BaseModel):
     product_category: str = Field(default="", max_length=160)
     attributes_json: dict[str, Any] = Field(default_factory=dict)
     sku: str = Field(default="", max_length=240)
-    currency: str = Field(default="USD", pattern=r"^[A-Z]{3}$")
+    currency: Literal["USD"] = "USD"
     regular_price_cents: int = Field(ge=0, le=1_000_000_000)
     sale_price_cents: int | None = Field(default=None, ge=0, le=1_000_000_000)
     availability_status: Literal["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK", "UNKNOWN"] = "UNKNOWN"
@@ -135,6 +135,12 @@ class ConceptCreate(BaseModel):
     substitution_policy: str = Field(default="Equivalent products may be substituted with approval when availability or pricing changes.", max_length=2000)
     markup_policy: MarkupPolicyInput
     components: list[ComponentInput] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_lead_time_range(self):
+        if self.lead_time_min_days > self.lead_time_max_days:
+            raise ValueError("lead_time_min_days must not exceed lead_time_max_days.")
+        return self
 
 
 class OfferPatch(BaseModel):
