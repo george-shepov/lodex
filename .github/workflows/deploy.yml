@@ -94,7 +94,7 @@ jobs:
             echo 'LODEX vault policy is not installed yet; using the existing private .env.local migration fallback.' >&2
           fi
 
-          docker compose -f "$compose" build api web
+          docker compose -f "$compose" build api web communications-forwarder
 
           # Docker can briefly report "removal is already in progress" or
           # "No such container" when another VPS-side deploy/cleanup overlaps.
@@ -102,7 +102,7 @@ jobs:
           # finishes settling instead of failing an otherwise valid build.
           deploy_attempt=1
           deploy_max_attempts=4
-          until docker compose -f "$compose" up -d api web; do
+          until docker compose -f "$compose" up -d api web communications-forwarder; do
             if [ "$deploy_attempt" -ge "$deploy_max_attempts" ]; then
               echo "Docker Compose deployment failed after $deploy_max_attempts attempts." >&2
               exit 1
@@ -114,7 +114,7 @@ jobs:
             deploy_attempt=$((deploy_attempt + 1))
           done
 
-          docker compose -f "$compose" ps api web
+          docker compose -f "$compose" ps api web communications-forwarder
           REMOTE
 
       - name: Verify live deployment
