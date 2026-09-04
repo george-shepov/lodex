@@ -3,9 +3,9 @@ const BUILD_VERSION = __LODEX_BUILD_VERSION__
 const STORAGE_KEY = 'lodex-build-version'
 const VERSION_PARAM = 'v'
 
-function versionedUrl(build = BUILD_VERSION) {
+function cleanUrl() {
   const url = new URL(window.location.href)
-  url.searchParams.set(VERSION_PARAM, build)
+  url.searchParams.delete(VERSION_PARAM)
   return url
 }
 
@@ -28,17 +28,17 @@ function rememberedBuild() {
   try { return localStorage.getItem(STORAGE_KEY) || '' } catch { return '' }
 }
 
-function stampCurrentUrl(build = BUILD_VERSION) {
+function removeLegacyVersionParam() {
   const current = new URL(window.location.href)
-  if (current.searchParams.get(VERSION_PARAM) === build) return
-  current.searchParams.set(VERSION_PARAM, build)
+  if (!current.searchParams.has(VERSION_PARAM)) return
+  current.searchParams.delete(VERSION_PARAM)
   window.history.replaceState(window.history.state, '', current)
 }
 
 async function recoverFromMismatch(nextBuild) {
   rememberBuild(nextBuild)
   await clearBrowserCaches()
-  window.location.replace(versionedUrl(nextBuild))
+  window.location.replace(cleanUrl())
 }
 
 export async function installBuildVersionGuard() {
@@ -49,7 +49,7 @@ export async function installBuildVersionGuard() {
   }
 
   rememberBuild(BUILD_VERSION)
-  stampCurrentUrl(BUILD_VERSION)
+  removeLegacyVersionParam()
 
   // version.json is emitted on every Vite build and explicitly bypasses the
   // service-worker navigation fallback. A newer server build can therefore

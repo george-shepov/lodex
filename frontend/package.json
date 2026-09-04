@@ -4,8 +4,8 @@
   "version": "0.6.1",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "test:intake": "node tests/chatScroll.test.mjs && node tests/intakeServiceInference.test.mjs && node tests/intakeQuestionGuard.test.mjs && node tests/intakeFormAssistant.test.mjs && node tests/uploadAccumulator.test.mjs && node tests/conversationPayload.test.mjs && node tests/galleryCuration.test.mjs && node tests/segmentState.test.mjs",
+    "build": "vite build && node scripts/prerender.mjs",
+    "test:intake": "node tests/chatScroll.test.mjs && node tests/intakeServiceInference.test.mjs && node tests/intakeQuestionGuard.test.mjs && node tests/intakeFormAssistant.test.mjs && node tests/uploadAccumulator.test.mjs && node tests/conversationPayload.test.mjs && node tests/galleryCuration.test.mjs && node tests/segmentState.test.mjs && node tests/seo.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

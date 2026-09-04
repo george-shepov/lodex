@@ -33,6 +33,12 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
+      - name: Validate production Nginx image
+        working-directory: .
+        run: |
+          docker build -t lodex-web-validation frontend
+          docker run --rm --add-host api:127.0.0.1 lodex-web-validation nginx -t
+
   backend:
     name: Backend tests and syntax check
     runs-on: ubuntu-latest
