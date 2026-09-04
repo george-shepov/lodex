@@ -91,7 +91,7 @@ function changeSelection() {
 
       <template v-if="stage === 'segment'">
         <p class="segment-kicker">Start with the right LODEX team</p>
-        <h1 id="segment-gateway-title">What kind of project are you managing?</h1>
+        <h2 id="segment-gateway-title">What kind of project are you managing?</h2>
         <div class="segment-grid">
           <button v-for="segment in segments" :key="segment.key" type="button" class="segment-card" @click="chooseSegment(segment)">
             <img class="segment-art" :src="segment.image" :alt="`${segment.title} service division`" />
@@ -107,7 +107,7 @@ function changeSelection() {
       <template v-else>
         <button type="button" class="segment-back" @click="stage = 'segment'">← Back to customer type</button>
         <p class="segment-kicker">LODEX Home</p>
-        <h1 id="segment-gateway-title">What best describes your project?</h1>
+        <h2 id="segment-gateway-title">What best describes your project?</h2>
         <p class="segment-intro">One early choice sets the base amount. Route distance is calculated separately on the server after we receive the project address.</p>
         <div class="home-size-grid">
           <button v-for="size in homeProjectSizes" :key="size.key" type="button" class="home-size-card" @click="chooseHomeSize(size)">
@@ -160,7 +160,7 @@ function changeSelection() {
   text-transform: uppercase;
 }
 
-h1 {
+h2 {
   max-width: 1040px;
   margin: 2px auto 18px;
   font-size: clamp(2.2rem, 3.45vw, 3.45rem);

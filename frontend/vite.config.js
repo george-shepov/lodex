@@ -4,9 +4,11 @@ import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { SERVICE_ROUTES } from './src/seo.mjs'
 
 const packageMetadata = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
 const buildVersion = `${packageMetadata.version}+${Date.now().toString(36)}`
+const publicRoutePattern = new RegExp(`^https?://[^/]+/(?:$|inspiration/?$|privacy/?$|terms/?$|services/(?:${SERVICE_ROUTES.map(route => route.slug).join('|')})/?$)`)
 
 function buildVersionPlugin() {
   return {
@@ -80,7 +82,18 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
-        navigateFallbackDenylist: [/^\/api\//, /^\/version\.json(?:\?|$)/],
+        navigateFallback: null,
+        globIgnores: ['**/inspiration/**', '**/portfolio/**', '**/services/**', '**/*.mp4'],
+        runtimeCaching: [{
+          urlPattern: publicRoutePattern,
+          handler: 'NetworkFirst',
+          method: 'GET',
+          options: {
+            cacheName: 'lodex-public-pages',
+            networkTimeoutSeconds: 4,
+            expiration: { maxEntries: 16, maxAgeSeconds: 60 * 60 * 24 * 7 },
+          },
+        }],
       },
     }),
   ],

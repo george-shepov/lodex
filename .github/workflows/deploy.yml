@@ -123,13 +123,41 @@ jobs:
           curl --fail --silent --show-error --max-time 20 \
             -D /tmp/lodex-home-headers \
             -o /tmp/lodex-home \
-            https://lodex.giorgiy.org/
+            https://lodex.work/
           grep -qi '^HTTP/.* 200' /tmp/lodex-home-headers
+          grep -Fq '<link rel="canonical" href="https://lodex.work/"' /tmp/lodex-home
 
           curl --fail --silent --show-error --max-time 20 \
             -D /tmp/lodex-logo-headers \
             -o /tmp/lodex-logo \
-            https://lodex.giorgiy.org/lodex-logo.png
+            https://lodex.work/lodex-logo.png
           grep -Eqi '^content-type:[[:space:]]*image/png([;[:space:]]|$)' /tmp/lodex-logo-headers
 
-          echo 'LODEX deployment verified: homepage 200 and lodex-logo.png image/png.'
+          curl --fail --silent --show-error --max-time 20 \
+            -D /tmp/lodex-robots-headers \
+            -o /tmp/lodex-robots \
+            https://lodex.work/robots.txt
+          grep -Eqi '^content-type:[[:space:]]*text/plain([;[:space:]]|$)' /tmp/lodex-robots-headers
+          grep -Fq 'Sitemap: https://lodex.work/sitemap.xml' /tmp/lodex-robots
+
+          curl --fail --silent --show-error --max-time 20 \
+            -D /tmp/lodex-sitemap-headers \
+            -o /tmp/lodex-sitemap \
+            https://lodex.work/sitemap.xml
+          grep -Eqi '^content-type:[[:space:]]*(application|text)/xml([;[:space:]]|$)' /tmp/lodex-sitemap-headers
+          grep -Fq '<loc>https://lodex.work/services/handyman-maintenance</loc>' /tmp/lodex-sitemap
+
+          curl --fail --silent --show-error --max-time 20 \
+            -o /tmp/lodex-service \
+            https://lodex.work/services/handyman-maintenance
+          grep -Fq '<h1>Handyman &amp; Property Maintenance</h1>' /tmp/lodex-service
+          grep -Fq '<link rel="canonical" href="https://lodex.work/services/handyman-maintenance"' /tmp/lodex-service
+
+          not_found_status="$(curl --silent --show-error --max-time 20 \
+            -o /tmp/lodex-not-found \
+            -w '%{http_code}' \
+            https://lodex.work/this-page-must-not-exist)"
+          test "$not_found_status" = 404
+          grep -Fq '<h1>Page not found</h1>' /tmp/lodex-not-found
+
+          echo 'LODEX deployment verified: public HTML, crawler files, canonical service route, and real 404.'

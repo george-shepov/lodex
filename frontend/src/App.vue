@@ -7,6 +7,7 @@ import ConceptPage from './components/ConceptPage.vue'
 import { serializeConversation } from './conversationPayload.mjs'
 import { scrollConversationToEnd } from './chatScroll.mjs'
 import { readStoredHomeProjectSize, readStoredSegment, SEGMENT_LABELS } from './segmentState.mjs'
+import { applyRouteSeo } from './seo.mjs'
 
 const phone = '(440) 601-8001'
 const phoneHref = 'tel:+14406018001'
@@ -377,6 +378,7 @@ const scopeLabel = computed(() => agreed.value ? 'Scope confirmed' : intakeReady
 const canSchedule = computed(() => hasCustomerMessage.value || uploaded.value)
 const intakeTitle = computed(() => selectedService.value?.title || 'Your project')
 const segmentTitle = computed(() => SEGMENT_LABELS[customerSegment.value] || 'Choose your LODEX team')
+watch(currentPath, path => applyRouteSeo(path), { immediate: true })
 
 function formatFee(cents) {
   if (!Number.isInteger(cents) || cents <= 0) return ''
@@ -810,7 +812,7 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); wind
 
     <template v-else-if="activeService">
       <section class="service-hero page-width">
-        <a class="back-link" href="/" @click.prevent="goHome">← All services</a>
+        <nav class="seo-breadcrumb" aria-label="Breadcrumb"><a href="/" @click.prevent="goHome">Home</a><span>›</span><a href="/#services" @click.prevent="goHome('#services')">Services</a><span>›</span><span aria-current="page">{{ activeService.title }}</span></nav>
         <p class="eyebrow">LODEX services / {{ activeService.short }}</p>
         <div class="service-hero-grid">
           <div><h1>{{ activeService.title }}</h1><p class="service-lede">{{ activeService.intro }}</p><div class="hero-actions"><button type="button" class="primary-button" @click="startFromService(activeService)">Start this project <span>↗</span></button><a class="phone-link" :href="phoneHref">Call {{ phone }}</a></div></div>
@@ -847,7 +849,7 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); wind
         <p class="gallery-status">Showing {{ visibleGalleryProjects.length }} of {{ filteredGalleryProjects.length }} concepts</p>
         <div class="archive-grid">
           <figure v-for="project in visibleGalleryProjects" :key="project.id" tabindex="0" role="button" :aria-label="`View ${project.title}`" @click="openInspiration(project)" @keydown.enter="openInspiration(project)" @keydown.space.prevent="openInspiration(project)">
-            <img :src="project.src" :alt="project.alt" loading="lazy" decoding="async" @error="hideGalleryImage(project)"/>
+            <img :src="project.src" :alt="project.alt" width="1200" height="900" loading="lazy" decoding="async" @error="hideGalleryImage(project)"/>
             <figcaption><span>{{ project.category }}</span><b>{{ project.title }}</b></figcaption>
           </figure>
         </div>
@@ -883,7 +885,7 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); wind
         </div>
       </section>
 
-      <section id="inspiration" class="inspiration-section page-width"><div class="section-heading"><div><p class="eyebrow">LZ Custom inspiration · {{ availableGalleryProjects.length }} concepts</p><h2>See what thoughtful work can look like.</h2></div><div class="inspiration-intro"><button type="button" class="text-button" @click="openInspirationGallery">Explore all {{ availableGalleryProjects.length }} concepts →</button></div></div><div class="inspiration-grid"><figure v-for="project in inspirationProjects" :key="project.src" tabindex="0" role="button" :aria-label="`View ${project.title}`" @click="openInspiration(project)" @keydown.enter="openInspiration(project)" @keydown.space.prevent="openInspiration(project)"><img :src="project.src" :alt="project.title" loading="lazy" @error="hideGalleryImage(project)"/><figcaption><b>{{ project.title }}</b><span>{{ project.detail }}</span></figcaption></figure></div><button type="button" class="gallery-more gallery-more-home" @click="openInspirationGallery">Open the complete inspiration archive <span>↗</span></button></section>
+      <section id="inspiration" class="inspiration-section page-width"><div class="section-heading"><div><p class="eyebrow">LZ Custom inspiration · {{ availableGalleryProjects.length }} concepts</p><h2>See what thoughtful work can look like.</h2></div><div class="inspiration-intro"><a class="text-button" href="/inspiration" @click.prevent="openInspirationGallery">Explore all {{ availableGalleryProjects.length }} concepts →</a></div></div><div class="inspiration-grid"><figure v-for="project in inspirationProjects" :key="project.src" tabindex="0" role="button" :aria-label="`View ${project.title}`" @click="openInspiration(project)" @keydown.enter="openInspiration(project)" @keydown.space.prevent="openInspiration(project)"><img :src="project.src" :alt="project.title" width="1200" height="900" loading="lazy" decoding="async" @error="hideGalleryImage(project)"/><figcaption><b>{{ project.title }}</b><span>{{ project.detail }}</span></figcaption></figure></div><a class="gallery-more gallery-more-home" href="/inspiration" @click.prevent="openInspirationGallery">Open the complete inspiration archive <span>↗</span></a></section>
 
       <section id="services" class="services-section page-width"><div class="section-heading"><div><p class="eyebrow">LODEX services</p><h2>Renovate, repair, deliver, source, and restore.</h2></div><p>Five clear ways to start. Every service begins with a practical look at scope, access, timing, materials, and the next step.</p></div><div class="service-grid"><a v-for="(service, index) in services" :key="service.slug" class="service-card" :href="serviceHref(service)" @click.prevent="openService(service)"><span>0{{ index + 1 }}</span><h3>{{ service.title }}</h3><p>{{ service.summary }}</p><b>Explore service →</b></a></div></section>
 
