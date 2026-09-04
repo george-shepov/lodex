@@ -40,6 +40,7 @@ const nginx = await readFile(new URL('../nginx.conf', import.meta.url), 'utf8')
 assert.match(nginx, /location = \/robots\.txt/)
 assert.match(nginx, /location = \/sitemap\.xml/)
 assert.match(nginx, /try_files \$uri \$uri\.html =404;/)
+assert.match(nginx, /absolute_redirect off;/)
 assert.doesNotMatch(nginx, /try_files \$uri \/index\.html;/)
 
 console.log('SEO route, sitemap, crawler, and canonical checks passed')
