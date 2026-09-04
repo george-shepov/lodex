@@ -153,6 +153,15 @@ jobs:
           grep -Fq '<h1>Handyman &amp; Property Maintenance</h1>' /tmp/lodex-service
           grep -Fq '<link rel="canonical" href="https://lodex.work/services/handyman-maintenance"' /tmp/lodex-service
 
+          trailing_slash_status="$(curl --silent --show-error --max-time 20 \
+            -D /tmp/lodex-trailing-slash-headers \
+            -o /dev/null \
+            -w '%{http_code}' \
+            https://lodex.work/services/handyman-maintenance/)"
+          test "$trailing_slash_status" = 308
+          grep -Eqi '^location:[[:space:]]*/services/handyman-maintenance([[:space:]]|$)' \
+            /tmp/lodex-trailing-slash-headers
+
           not_found_status="$(curl --silent --show-error --max-time 20 \
             -o /tmp/lodex-not-found \
             -w '%{http_code}' \
