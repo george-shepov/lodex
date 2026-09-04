@@ -47,4 +47,4 @@ jobs:
         working-directory: .
         run: |
           docker build -t lodex-web-validation frontend
-          docker run --rm lodex-web-validation nginx -t
+          docker run --rm --add-host api:127.0.0.1 lodex-web-validation nginx -t
