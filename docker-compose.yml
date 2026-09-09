@@ -12,6 +12,18 @@ services:
       - default
       - edge
 
+  communications-forwarder:
+    build: ./backend
+    command: ["python", "communications_forwarder.py"]
+    restart: unless-stopped
+    env_file:
+      - .env.local
+      - ${LODEX_VAULT_ENV_FILE:-.env.local}
+    volumes:
+      - ./data:/app/data
+    networks:
+      - edge
+
   web:
     build: ./frontend
     depends_on:
