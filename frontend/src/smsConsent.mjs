@@ -1,5 +1,7 @@
 export const SMS_CONSENT_TEXT = 'I agree to receive service-related SMS/MMS messages from LODEX at the mobile number provided. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for assistance. Consent is not a condition of purchase.'
 
+export const PHONE_INPUT_SELECTOR = 'input[type="tel"], input[autocomplete="tel"], input[placeholder*="phone" i]'
+
 let consentSequence = 0
 
 function createLink(documentRef, href, text) {
@@ -59,8 +61,8 @@ export function scanForPhoneInputs(root, documentRef = root?.ownerDocument || ro
   if (!root || !documentRef) return 0
 
   const inputs = []
-  if (root.matches?.('input[type="tel"]')) inputs.push(root)
-  if (root.querySelectorAll) inputs.push(...root.querySelectorAll('input[type="tel"]'))
+  if (root.matches?.(PHONE_INPUT_SELECTOR)) inputs.push(root)
+  if (root.querySelectorAll) inputs.push(...root.querySelectorAll(PHONE_INPUT_SELECTOR))
 
   let attached = 0
   for (const input of inputs) {
