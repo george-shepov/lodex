@@ -44,7 +44,7 @@ SMS_TEMPLATES: dict[str, MessageTemplate] = {
         purpose="Confirm an appointment after LODEX has accepted the requested date and time.",
         body=(
             "LODEX: Your [Service] appointment is confirmed for [Date] at [Time] at [Service Address]. "
-            "Please reply if you need to reschedule or call LODEX at (440) 601-8001. "
+            "Please reply if you need to reschedule or call LODEX at (216) 247-4724. "
             "Reply STOP to opt out."
         ),
         variables=("Service", "Date", "Time", "Service Address"),
