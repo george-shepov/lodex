@@ -8,7 +8,7 @@ import {
   structuredDataForRoute,
 } from '../src/seo.mjs'
 import { SMS_COMPLIANCE, smsComplianceForPath } from '../src/smsCompliance.mjs'
-import { PHONE_INPUT_SELECTOR, SMS_CONSENT_TEXT } from '../src/smsConsent.mjs'
+import { PHONE_INPUT_SELECTOR, SMS_CONSENT_TEXT, SMS_CONSENT_VERSION } from '../src/smsConsent.mjs'
 
 assert.equal(PUBLIC_ROUTES.length, 12)
 assert.equal(new Set(PUBLIC_ROUTES.map(route => route.path)).size, PUBLIC_ROUTES.length)
@@ -40,6 +40,7 @@ assert.match(termsSms.paragraphs.join(' '), /Consent to receive text messages is
 assert.match(termsSms.paragraphs.join(' '), /replying STOP/i)
 assert.match(termsSms.paragraphs.join(' '), /Reply HELP for assistance/i)
 
+assert.equal(SMS_CONSENT_VERSION, '2026-09-13-v1')
 assert.match(SMS_CONSENT_TEXT, /service-related SMS\/MMS messages from LODEX/i)
 assert.match(SMS_CONSENT_TEXT, /Message frequency varies/i)
 assert.match(SMS_CONSENT_TEXT, /Message and data rates may apply/i)
@@ -55,6 +56,12 @@ assert.match(consentSource, /checkbox\.required = false/)
 assert.match(consentSource, /new MutationObserverClass/)
 assert.match(consentSource, /createLink\(documentRef, '\/privacy'/)
 assert.match(consentSource, /createLink\(documentRef, '\/terms'/)
+assert.match(consentSource, /fetch\('\/api\/sms\/consent'/)
+assert.match(consentSource, /keepalive: true/)
+assert.match(consentSource, /consent: true/)
+assert.match(consentSource, /consent_text: SMS_CONSENT_TEXT/)
+assert.match(consentSource, /consent_version: SMS_CONSENT_VERSION/)
+assert.match(consentSource, /addEventListener\('submit', handleSubmit, true\)/)
 
 const mainSource = await readFile(new URL('../src/main.js', import.meta.url), 'utf8')
 assert.match(mainSource, /installSmsConsent\(document\)/)
@@ -83,4 +90,4 @@ assert.match(nginx, /try_files \$uri \$uri\.html =404;/)
 assert.match(nginx, /absolute_redirect off;/)
 assert.doesNotMatch(nginx, /try_files \$uri \/index\.html;/)
 
-console.log('SEO route, sitemap, crawler, canonical, SMS compliance, and SMS consent checks passed')
+console.log('SEO route, sitemap, crawler, canonical, SMS compliance, consent, and audit checks passed')
