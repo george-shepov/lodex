@@ -12,6 +12,8 @@ app = main.app
 # Register the persistent admin lead/CRM routes on the same FastAPI app.
 importlib.import_module('leads')
 importlib.import_module('catalog')
+# Register the append-only customer SMS consent audit endpoint.
+importlib.import_module('sms_consent_audit')
 
 # Customer virtual-room joins must alert the operator even when the customer
 # did not enter through the explicit live-support form.
