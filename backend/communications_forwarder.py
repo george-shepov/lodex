@@ -9,6 +9,8 @@ from typing import Any
 
 import httpx
 
+from communications_templates import SMS_TEMPLATE_CATALOG_VERSION, render_sms_template
+
 
 DATA_DIR = Path(os.getenv("LODEX_DATA_DIR", "/app/data"))
 STATE_FILE = Path(
@@ -39,6 +41,28 @@ def _metadata(values: dict[str, Any]) -> dict[str, str]:
         key: _string(value)
         for key, value in values.items()
         if value is not None and _string(value)
+    }
+
+
+def _first_name(value: Any) -> str:
+    name = _string(value)
+    return name.split()[0] if name else ""
+
+
+def appointment_sms_draft(record: dict[str, Any], service: str) -> dict[str, str]:
+    """Suggest, but never automatically send, the campaign photo-request message."""
+    if record.get("uploads"):
+        return {"sms_template_catalog_version": SMS_TEMPLATE_CATALOG_VERSION}
+    first_name = _first_name(record.get("name"))
+    if not first_name or not service:
+        return {"sms_template_catalog_version": SMS_TEMPLATE_CATALOG_VERSION}
+    return {
+        "sms_template_catalog_version": SMS_TEMPLATE_CATALOG_VERSION,
+        "suggested_sms_template_id": "service_photo_request",
+        "suggested_sms_draft": render_sms_template(
+            "service_photo_request",
+            {"First Name": first_name, "Service": service},
+        ),
     }
 
 
@@ -77,6 +101,7 @@ def build_tenant_payload(source: str, record: dict[str, Any]) -> dict[str, Any]:
                         "preferred_time": record.get("preferred_time"),
                         "address": record.get("address"),
                         "service_category": record.get("service_category"),
+                        **appointment_sms_draft(record, service),
                     }
                 ),
             },
@@ -113,6 +138,7 @@ def build_tenant_payload(source: str, record: dict[str, Any]) -> dict[str, Any]:
                         "source_id": record.get("id"),
                         "project_code": project_code,
                         "room_code": record.get("room_code"),
+                        "sms_template_catalog_version": SMS_TEMPLATE_CATALOG_VERSION,
                     }
                 ),
             },
