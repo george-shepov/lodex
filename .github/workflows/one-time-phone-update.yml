@@ -1,0 +1,93 @@
+name: One-time LODEX phone migration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-time-phone-update.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update-phone:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Make Twilio the primary number and retain voice fallback
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          app = Path('frontend/src/App.vue')
+          seo = Path('frontend/src/seo.mjs')
+          prerender = Path('frontend/scripts/prerender.mjs')
+
+          # Primary customer-facing number: Twilio voice/SMS/MMS.
+          text = app.read_text()
+          text = text.replace("const phone = '(440) 601-8001'", "const phone = '(216) 247-4724'")
+          text = text.replace("const phoneHref = 'tel:+14406018001'", "const phoneHref = 'tel:+12162474724'")
+          if "const fallbackPhone = '(440) 601-8001'" not in text:
+              anchor = "const phoneHref = 'tel:+12162474724'\n"
+              replacement = anchor + "const fallbackPhone = '(440) 601-8001'\nconst fallbackPhoneHref = 'tel:+14406018001'\n"
+              if anchor not in text:
+                  raise SystemExit('App.vue primary phone anchor not found')
+              text = text.replace(anchor, replacement, 1)
+
+          footer_anchor = '<a :href="phoneHref">Call {{ phone }}</a></nav>'
+          footer_replacement = '<a :href="phoneHref">Call / text {{ phone }}</a><a :href="fallbackPhoneHref">Voice fallback {{ fallbackPhone }}</a></nav>'
+          if 'Voice fallback {{ fallbackPhone }}' not in text:
+              if footer_anchor not in text:
+                  raise SystemExit('App.vue footer phone anchor not found')
+              text = text.replace(footer_anchor, footer_replacement, 1)
+          app.write_text(text)
+
+          # Structured data advertises only the primary business number.
+          text = seo.read_text()
+          text = text.replace("telephone: '+1-440-601-8001'", "telephone: '+1-216-247-4724'")
+          if "telephone: '+1-216-247-4724'" not in text:
+              raise SystemExit('seo.mjs primary phone update failed')
+          seo.write_text(text)
+
+          # Pre-rendered/static HTML must match the hydrated Vue app.
+          text = prerender.read_text()
+          text = text.replace('tel:+14406018001', 'tel:+12162474724')
+          text = text.replace('(440) 601-8001', '(216) 247-4724')
+          contact_group = '<nav class="footer-group"><span>Contact</span><a href="tel:+12162474724">Call / text (216) 247-4724</a><a href="tel:+14406018001">Voice fallback (440) 601-8001</a></nav>'
+          if 'Voice fallback (440) 601-8001' not in text:
+              footer_end = '<nav class="footer-group"><span>Explore</span><a href="/inspiration">Inspiration archive</a><a href="/privacy">Privacy Policy</a><a href="/terms">Terms &amp; Conditions</a></nav></div></footer>'
+              footer_new = '<nav class="footer-group"><span>Explore</span><a href="/inspiration">Inspiration archive</a><a href="/privacy">Privacy Policy</a><a href="/terms">Terms &amp; Conditions</a></nav>' + contact_group + '</div></footer>'
+              if footer_end not in text:
+                  raise SystemExit('prerender.mjs footer anchor not found')
+              text = text.replace(footer_end, footer_new, 1)
+          prerender.write_text(text)
+
+          # Guardrails: primary is consistent; 440 remains only as explicit fallback.
+          assert "const phone = '(216) 247-4724'" in app.read_text()
+          assert "const fallbackPhone = '(440) 601-8001'" in app.read_text()
+          assert "telephone: '+1-216-247-4724'" in seo.read_text()
+          assert 'Call / text (216) 247-4724' in prerender.read_text()
+          assert 'Voice fallback (440) 601-8001' in prerender.read_text()
+          PY
+
+      - name: Validate frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run test:intake
+          npm run build
+
+      - name: Commit phone update
+        run: |
+          if git diff --quiet -- frontend/src/App.vue frontend/src/seo.mjs frontend/scripts/prerender.mjs; then
+            echo 'Phone update already applied.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/App.vue frontend/src/seo.mjs frontend/scripts/prerender.mjs
+          git commit -m 'feat: move LODEX primary phone to Twilio'
+          git push origin HEAD:main
