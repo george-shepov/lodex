@@ -1,4 +1,5 @@
 name: One-time LODEX phone migration
+# rerun after repairing stale SMS consent listener assertion
 
 on:
   push:
