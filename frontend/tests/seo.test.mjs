@@ -61,7 +61,7 @@ assert.match(consentSource, /keepalive: true/)
 assert.match(consentSource, /consent: true/)
 assert.match(consentSource, /consent_text: SMS_CONSENT_TEXT/)
 assert.match(consentSource, /consent_version: SMS_CONSENT_VERSION/)
-assert.match(consentSource, /addEventListener\('submit', handleSubmit, true\)/)
+assert.match(consentSource, /addEventListener(?:\?\.)?\('submit', handleSubmit, true\)/)
 
 const mainSource = await readFile(new URL('../src/main.js', import.meta.url), 'utf8')
 assert.match(mainSource, /installSmsConsent\(document\)/)
