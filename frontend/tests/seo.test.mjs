@@ -8,6 +8,7 @@ import {
   structuredDataForRoute,
 } from '../src/seo.mjs'
 import { SMS_COMPLIANCE, smsComplianceForPath } from '../src/smsCompliance.mjs'
+import { SMS_CONSENT_TEXT } from '../src/smsConsent.mjs'
 
 assert.equal(PUBLIC_ROUTES.length, 12)
 assert.equal(new Set(PUBLIC_ROUTES.map(route => route.path)).size, PUBLIC_ROUTES.length)
@@ -25,6 +26,7 @@ assert.equal(canonicalForPath('/not-a-real-route'), null)
 const appSource = await readFile(new URL('../src/App.vue', import.meta.url), 'utf8')
 const appServiceSlugs = [...appSource.matchAll(/\bslug:\s*'([^']+)'/g)].map(match => match[1])
 assert.deepEqual(new Set(appServiceSlugs), new Set(SERVICE_ROUTES.map(route => route.slug)))
+assert.match(appSource, /type="tel"/)
 
 const privacySms = smsComplianceForPath('/privacy')
 const termsSms = smsComplianceForPath('/terms/')
@@ -37,8 +39,24 @@ assert.match(termsSms.paragraphs.join(' '), /Consent to receive text messages is
 assert.match(termsSms.paragraphs.join(' '), /replying STOP/i)
 assert.match(termsSms.paragraphs.join(' '), /Reply HELP for assistance/i)
 
+assert.match(SMS_CONSENT_TEXT, /service-related SMS\/MMS messages from LODEX/i)
+assert.match(SMS_CONSENT_TEXT, /Message frequency varies/i)
+assert.match(SMS_CONSENT_TEXT, /Message and data rates may apply/i)
+assert.match(SMS_CONSENT_TEXT, /Reply STOP to opt out or HELP for assistance/i)
+assert.match(SMS_CONSENT_TEXT, /Consent is not a condition of purchase/i)
+
+const consentSource = await readFile(new URL('../src/smsConsent.mjs', import.meta.url), 'utf8')
+assert.match(consentSource, /input\[type="tel"\]/)
+assert.match(consentSource, /checkbox\.checked = false/)
+assert.match(consentSource, /checkbox\.required = false/)
+assert.match(consentSource, /new MutationObserverClass/)
+assert.match(consentSource, /href, '\/privacy'/)
+assert.match(consentSource, /href, '\/terms'/)
+
 const mainSource = await readFile(new URL('../src/main.js', import.meta.url), 'utf8')
+assert.match(mainSource, /installSmsConsent\(document\)/)
 assert.match(mainSource, /installSmsCompliance\(document, window\.location\.pathname\)/)
+assert.match(mainSource, /import '\.\/smsConsent\.css'/)
 
 const prerenderSource = await readFile(new URL('../scripts/prerender.mjs', import.meta.url), 'utf8')
 assert.match(prerenderSource, /data-sms-compliance/)
@@ -62,4 +80,4 @@ assert.match(nginx, /try_files \$uri \$uri\.html =404;/)
 assert.match(nginx, /absolute_redirect off;/)
 assert.doesNotMatch(nginx, /try_files \$uri \/index\.html;/)
 
-console.log('SEO route, sitemap, crawler, canonical, and SMS compliance checks passed')
+console.log('SEO route, sitemap, crawler, canonical, SMS compliance, and SMS consent checks passed')
