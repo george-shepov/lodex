@@ -12,6 +12,7 @@ import { createUploadAccumulator } from './uploadAccumulator.mjs'
 import { lzGalleryProjects } from './lzGallery'
 import { applyGalleryCuration } from './galleryCuration.mjs'
 import { withCustomerSegment } from './segmentState.mjs'
+import { installSmsCompliance } from './smsCompliance.mjs'
 import './shadcn.css'
 import './style.css'
 import './supportPanel.css'
@@ -141,6 +142,7 @@ applyGalleryCuration(lzGalleryProjects)
 installLodexRequestGuards()
 installVirtualRoomAlertGuard()
 createApp(App).mount('#app')
+installSmsCompliance(document, window.location.pathname)
 installLodexEnhancements()
 installChatReplyFocus()
 
