@@ -9,6 +9,7 @@ import {
   SOCIAL_IMAGE,
   structuredDataForRoute,
 } from '../src/seo.mjs'
+import { SMS_COMPLIANCE_EFFECTIVE_DATE, smsComplianceForPath } from '../src/smsCompliance.mjs'
 
 const distDir = new URL('../dist/', import.meta.url)
 const template = await readFile(new URL('index.html', distDir), 'utf8')
@@ -68,11 +69,18 @@ function renderService(route) {
   return `<section class="service-hero page-width"><nav class="seo-breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a><span>›</span><a href="/#services">Services</a><span>›</span><span aria-current="page">${escapeHtml(route.h1)}</span></nav><div class="service-hero-grid"><div><p class="eyebrow">LODEX services</p><h1>${escapeHtml(route.h1)}</h1><p class="service-lede">${escapeHtml(route.intro)}</p><div class="hero-actions"><a class="primary-button" href="/#intake">Start this project <span>↗</span></a><a class="phone-link" href="tel:+14406018001">Call (440) 601-8001</a></div></div><div class="service-hero-media"><img class="service-reel-image" src="${route.image}" alt="${escapeHtml(route.h1)}" width="1254" height="1254" /></div></div></section><section class="service-details page-width"><div><p class="section-kicker">Included services</p><ul>${route.includes.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div><div><p class="section-kicker">A good fit when</p><ul>${route.useCases.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div></section><section class="service-next"><div class="page-width"><p class="eyebrow">Start with the real details</p><h2>Photo, video, or a few plain words is enough to begin.</h2><a class="primary-button" href="/#intake">Tell us about it <span>↗</span></a></div></section>`
 }
 
+function renderSmsCompliance(route) {
+  const disclosure = smsComplianceForPath(route.path)
+  if (!disclosure) return ''
+  const paragraphs = disclosure.paragraphs.map(paragraph => `<p>${escapeHtml(paragraph)}</p>`).join('')
+  return `<section data-sms-compliance><h2>${escapeHtml(disclosure.title)}</h2>${paragraphs}<p>SMS terms last updated ${escapeHtml(SMS_COMPLIANCE_EFFECTIVE_DATE)}.</p></section>`
+}
+
 function renderOther(route) {
   if (route.kind === 'collection') {
     return `<section class="gallery-hero page-width"><a class="back-link" href="/">← LODEX home</a><p class="eyebrow">LODEX inspiration archive</p><div class="gallery-hero-grid"><div><h1>${escapeHtml(route.h1)}</h1></div><div><p>${escapeHtml(route.intro)}</p></div></div></section><section class="gallery-cta"><div class="page-width"><p class="eyebrow">Turn inspiration into a real scope</p><h2>Show us the idea and the space you actually have.</h2><a class="primary-button" href="/#intake">Start your project <span>↗</span></a> <a class="phone-link" href="/services/contracting-renovations">Explore renovation services</a></div></section>`
   }
-  return `<article class="legal-page page-width"><a class="back-link" href="/">← LODEX home</a><header class="legal-hero"><p class="eyebrow">Using LODEX</p><h1>${escapeHtml(route.h1)}</h1><p>${escapeHtml(route.intro)}</p></header><div class="legal-content">${(route.paragraphs || []).map((paragraph, index) => `<section><h2>${index === 0 ? 'What this means' : index === 1 ? 'How it applies' : 'Your choices and responsibilities'}</h2><p>${escapeHtml(paragraph)}</p></section>`).join('')}<section><h2>Contact LODEX</h2><p>Questions can be directed to <a href="tel:+14406018001">(440) 601-8001</a>.</p></section></div></article>`
+  return `<article class="legal-page page-width"><a class="back-link" href="/">← LODEX home</a><header class="legal-hero"><p class="eyebrow">Using LODEX</p><h1>${escapeHtml(route.h1)}</h1><p>${escapeHtml(route.intro)}</p></header><div class="legal-content">${(route.paragraphs || []).map((paragraph, index) => `<section><h2>${index === 0 ? 'What this means' : index === 1 ? 'How it applies' : 'Your choices and responsibilities'}</h2><p>${escapeHtml(paragraph)}</p></section>`).join('')}${renderSmsCompliance(route)}<section><h2>Contact LODEX</h2><p>Questions can be directed to <a href="tel:+14406018001">(440) 601-8001</a>.</p></section></div></article>`
 }
 
 function renderBody(route) {
