@@ -25,16 +25,18 @@ jobs:
           app = Path('frontend/src/App.vue')
           prerender = Path('frontend/scripts/prerender.mjs')
 
-          cta_vue = '''      <section id="sms-opt-in" class="service-next">
-        <div class="page-width">
-          <p class="eyebrow">LODEX text updates</p>
-          <h2>Text START to (216) 247-4724 to opt in.</h2>
-          <p>Receive service-related SMS/MMS from LODEX about inquiries, estimates, appointments, scheduling, and project updates. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for assistance. Consent is optional and is not a condition of purchase.</p>
-          <div class="hero-actions"><a class="primary-button" href="sms:+12162474724">Text LODEX <span>↗</span></a><a class="phone-link" href="/privacy" @click.prevent="navigate('/privacy')">Privacy Policy</a><a class="phone-link" href="/terms" @click.prevent="navigate('/terms')">Terms &amp; Conditions</a></div>
-        </div>
-      </section>
-
-'''
+          cta_vue = '\n'.join([
+              '      <section id="sms-opt-in" class="service-next">',
+              '        <div class="page-width">',
+              '          <p class="eyebrow">LODEX text updates</p>',
+              '          <h2>Text START to (216) 247-4724 to opt in.</h2>',
+              '          <p>Receive service-related SMS/MMS from LODEX about inquiries, estimates, appointments, scheduling, and project updates. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for assistance. Consent is optional and is not a condition of purchase.</p>',
+              '          <div class="hero-actions"><a class="primary-button" href="sms:+12162474724">Text LODEX <span>↗</span></a><a class="phone-link" href="/privacy" @click.prevent="navigate(\'/privacy\')">Privacy Policy</a><a class="phone-link" href="/terms" @click.prevent="navigate(\'/terms\')">Terms &amp; Conditions</a></div>',
+              '        </div>',
+              '      </section>',
+              '',
+              '',
+          ])
 
           text = app.read_text()
           if 'id="sms-opt-in"' not in text:
@@ -50,7 +52,15 @@ jobs:
               text = text.replace(footer_old, footer_new, 1)
           app.write_text(text)
 
-          cta_static = '''\n  <section id="sms-opt-in" class="service-next"><div class="page-width"><p class="eyebrow">LODEX text updates</p><h2>Text START to (216) 247-4724 to opt in.</h2><p>Receive service-related SMS/MMS from LODEX about inquiries, estimates, appointments, scheduling, and project updates. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for assistance. Consent is optional and is not a condition of purchase.</p><div class="hero-actions"><a class="primary-button" href="sms:+12162474724">Text LODEX <span>↗</span></a><a class="phone-link" href="/privacy">Privacy Policy</a><a class="phone-link" href="/terms">Terms &amp; Conditions</a></div></div></section>'''
+          cta_static = ''.join([
+              '\n  <section id="sms-opt-in" class="service-next"><div class="page-width">',
+              '<p class="eyebrow">LODEX text updates</p>',
+              '<h2>Text START to (216) 247-4724 to opt in.</h2>',
+              '<p>Receive service-related SMS/MMS from LODEX about inquiries, estimates, appointments, scheduling, and project updates. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for assistance. Consent is optional and is not a condition of purchase.</p>',
+              '<div class="hero-actions"><a class="primary-button" href="sms:+12162474724">Text LODEX <span>↗</span></a>',
+              '<a class="phone-link" href="/privacy">Privacy Policy</a>',
+              '<a class="phone-link" href="/terms">Terms &amp; Conditions</a></div></div></section>',
+          ])
 
           text = prerender.read_text()
           if 'id="sms-opt-in"' not in text:
