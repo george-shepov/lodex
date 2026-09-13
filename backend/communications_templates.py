@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Mapping
 
 
-SMS_TEMPLATE_CATALOG_VERSION = "lodex-a2p-service-2026-09-13-v1"
+SMS_TEMPLATE_CATALOG_VERSION = "lodex-a2p-service-2026-09-13-v2"
 
 
 @dataclass(frozen=True)
@@ -30,9 +30,10 @@ SMS_TEMPLATES: dict[str, MessageTemplate] = {
     ),
     "estimate_ready": MessageTemplate(
         template_id="estimate_ready",
-        purpose="Deliver an estimate and invite customer questions or approval.",
+        purpose="Deliver an estimate, link to project information, and invite customer questions or approval.",
         body=(
             "LODEX: Hi [First Name], your estimate for [Project Description] is [Amount]. "
+            "You can review your project information at https://lodex.work. "
             "Please reply with any questions or let us know if you’d like to proceed. "
             "Reply STOP to opt out."
         ),
@@ -43,7 +44,8 @@ SMS_TEMPLATES: dict[str, MessageTemplate] = {
         purpose="Confirm an appointment after LODEX has accepted the requested date and time.",
         body=(
             "LODEX: Your [Service] appointment is confirmed for [Date] at [Time] at [Service Address]. "
-            "Please reply if you need to reschedule. Reply STOP to opt out."
+            "Please reply if you need to reschedule or call LODEX at (440) 601-8001. "
+            "Reply STOP to opt out."
         ),
         variables=("Service", "Date", "Time", "Service Address"),
     ),
