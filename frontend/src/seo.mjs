@@ -144,7 +144,7 @@ export function structuredDataForRoute(route) {
   const business = {
     '@type': 'HomeAndConstructionBusiness', '@id': BUSINESS_ID, name: SITE_NAME,
     url: `${SITE_URL}/`, logo: SOCIAL_IMAGE, image: SOCIAL_IMAGE,
-    telephone: '+1-440-601-8001', description: home.description,
+    telephone: '+1-216-247-4724', description: home.description,
     areaServed: { '@type': 'AdministrativeArea', name: 'Northeast Ohio' },
   }
   const website = {
