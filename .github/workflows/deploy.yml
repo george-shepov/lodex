@@ -1,5 +1,5 @@
 name: Deploy LODEX to VPS
-# manual redeploy trigger: 2026-08-22
+# manual redeploy trigger: 2026-09-13 phone migration
 
 on:
   push:
@@ -153,6 +153,8 @@ jobs:
             https://lodex.work/
           grep -qi '^HTTP/.* 200' /tmp/lodex-home-headers
           grep -Fq '<link rel="canonical" href="https://lodex.work/"' /tmp/lodex-home
+          grep -Fq '(216) 247-4724' /tmp/lodex-home
+          grep -Fq 'Voice fallback (440) 601-8001' /tmp/lodex-home
 
           curl --fail --silent --show-error --max-time 20 \
             -D /tmp/lodex-logo-headers \
@@ -196,4 +198,4 @@ jobs:
           test "$not_found_status" = 404
           grep -Fq '<h1>Page not found</h1>' /tmp/lodex-not-found
 
-          echo 'LODEX deployment verified: public HTML, crawler files, canonical service route, and real 404.'
+          echo 'LODEX deployment verified: public HTML, Twilio primary number, voice fallback, crawler files, canonical service route, and real 404.'
