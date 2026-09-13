@@ -1,0 +1,32 @@
+.sms-consent-field {
+  width: 100%;
+  grid-column: 1 / -1;
+  margin: 0.35rem 0 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  opacity: 0.88;
+}
+
+.sms-consent-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  cursor: pointer;
+}
+
+.sms-consent-choice input[type='checkbox'] {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  margin: 0.15rem 0 0;
+}
+
+.sms-consent-links {
+  display: block;
+  margin: 0.28rem 0 0 1.55rem;
+}
+
+.sms-consent-links a {
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
