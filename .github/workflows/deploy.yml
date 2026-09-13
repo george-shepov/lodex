@@ -114,6 +114,32 @@ jobs:
             deploy_attempt=$((deploy_attempt + 1))
           done
 
+          # The shared edge resolves the Docker service names when Nginx loads
+          # its upstream configuration. Recreating LODEX containers can change
+          # their network addresses, so wait for the new local listener and
+          # reload the edge before asking the public URL to serve traffic.
+          health_attempt=1
+          health_max_attempts=12
+          until curl --fail --silent --show-error --max-time 5 \
+            http://127.0.0.1:4175/ >/dev/null; do
+            if [ "$health_attempt" -ge "$health_max_attempts" ]; then
+              echo "LODEX web did not become ready after $health_max_attempts attempts." >&2
+              docker compose -f "$compose" logs --tail=100 web >&2
+              exit 1
+            fi
+
+            sleep 2
+            health_attempt=$((health_attempt + 1))
+          done
+
+          edge_container=shepov_shared_edge
+          docker ps --format '{{.Names}}' | grep -qx "$edge_container" || {
+            echo "Shared edge container $edge_container is not running." >&2
+            exit 1
+          }
+          docker exec "$edge_container" nginx -t -c /etc/nginx/nginx.conf
+          docker exec "$edge_container" nginx -s reload
+
           docker compose -f "$compose" ps api web communications-forwarder
           REMOTE
 
@@ -121,6 +147,7 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --max-time 20 \
+            --retry 12 --retry-delay 2 --retry-all-errors \
             -D /tmp/lodex-home-headers \
             -o /tmp/lodex-home \
             https://lodex.work/
