@@ -13,11 +13,13 @@ import { lzGalleryProjects } from './lzGallery'
 import { applyGalleryCuration } from './galleryCuration.mjs'
 import { withCustomerSegment } from './segmentState.mjs'
 import { installSmsCompliance } from './smsCompliance.mjs'
+import { installSmsConsent } from './smsConsent.mjs'
 import './shadcn.css'
 import './style.css'
 import './supportPanel.css'
 import './virtual.css'
 import './enhancements.css'
+import './smsConsent.css'
 import './admin.css'
 
 function installVirtualRoomAlertGuard() {
@@ -142,6 +144,7 @@ applyGalleryCuration(lzGalleryProjects)
 installLodexRequestGuards()
 installVirtualRoomAlertGuard()
 createApp(App).mount('#app')
+installSmsConsent(document)
 installSmsCompliance(document, window.location.pathname)
 installLodexEnhancements()
 installChatReplyFocus()
