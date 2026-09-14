@@ -51,11 +51,11 @@ export async function installBuildVersionGuard() {
   rememberBuild(BUILD_VERSION)
   removeLegacyVersionParam()
 
-  // version.json is emitted on every Vite build and explicitly bypasses the
-  // service-worker navigation fallback. A newer server build can therefore
-  // evict stale PWA caches even when an older tab has remained open.
+  // /version serves the version.json artifact emitted on every Vite build and
+  // explicitly bypasses the service-worker navigation fallback. A newer server
+  // build can therefore evict stale PWA caches even when an older tab remains open.
   try {
-    const response = await fetch(`/version.json?t=${Date.now()}`, {
+    const response = await fetch(`/version?t=${Date.now()}`, {
       cache: 'no-store',
       headers: { 'Cache-Control': 'no-cache' },
     })
