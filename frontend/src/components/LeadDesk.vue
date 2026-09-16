@@ -9,6 +9,8 @@ const filter = ref('open')
 const showAdd = ref(false)
 const showImport = ref(false)
 const importText = ref('')
+const importInput = ref(null)
+const importFileName = ref('')
 const form = ref({ name: '', service: '', summary: '', reply_to: '', source_url: '', quoted_amount: '', notes: '' })
 
 const filteredLeads = computed(() => {
@@ -85,12 +87,38 @@ async function markFollowUp(lead) {
   }
 }
 
+function openImport() {
+  showImport.value = true
+  requestAnimationFrame(() => document.getElementById('lead-import-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+}
+
+function chooseImportFile() {
+  openImport()
+  importInput.value?.click()
+}
+
+async function loadImportFile(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  try {
+    importText.value = await file.text()
+    importFileName.value = file.name
+    error.value = ''
+    openImport()
+  } catch {
+    error.value = 'Could not read that JSON file.'
+  } finally {
+    event.target.value = ''
+  }
+}
+
 async function importLeads() {
   try {
     const parsed = JSON.parse(importText.value)
     const payload = Array.isArray(parsed) ? { leads: parsed } : parsed
     const result = await api('/api/admin/leads/import', { method: 'POST', body: JSON.stringify(payload) })
     importText.value = ''
+    importFileName.value = ''
     showImport.value = false
     error.value = `Imported ${result.imported}; ${result.duplicates} duplicate${result.duplicates === 1 ? '' : 's'} skipped.`
     await loadLeads()
@@ -119,7 +147,7 @@ onMounted(loadLeads)
 </script>
 
 <template>
-  <section class="lead-desk">
+  <section id="lead-desk" class="lead-desk">
     <div class="lead-heading">
       <div>
         <p class="eyebrow">Sales pipeline</p>
@@ -127,9 +155,18 @@ onMounted(loadLeads)
         <p>Keep every lead alive until it is won, declined, or the follow-up sequence is exhausted.</p>
       </div>
       <div class="lead-actions">
-        <button class="outline-button" type="button" @click="showImport = !showImport">Import</button>
-        <button class="primary-button" type="button" @click="showAdd = !showAdd">Add lead</button>
+        <button class="primary-button import-button" type="button" @click="openImport">Import leads</button>
+        <button class="outline-button" type="button" @click="showAdd = !showAdd">Add lead</button>
       </div>
+    </div>
+
+    <div class="import-callout">
+      <div>
+        <b>Have a Yelp/Gmail lead export?</b>
+        <span>Load the JSON file here. Existing leads are safely skipped by source + external ID.</span>
+      </div>
+      <button class="primary-button" type="button" @click="chooseImportFile">Load JSON file</button>
+      <input ref="importInput" class="visually-hidden" type="file" accept="application/json,.json,text/json" @change="loadImportFile" />
     </div>
 
     <div class="lead-metrics">
@@ -149,10 +186,14 @@ onMounted(loadLeads)
       <div class="wide form-actions"><button class="primary-button" type="submit">Save lead</button><button class="outline-button" type="button" @click="showAdd = false">Cancel</button></div>
     </form>
 
-    <div v-if="showImport" class="lead-import">
-      <p>Paste a JSON array of Yelp leads. Existing records are deduplicated by <code>source + external_id</code>.</p>
-      <textarea v-model="importText" rows="8" placeholder='[{"source":"yelp","external_id":"gmail-message-id","name":"Ann M.","service":"Pressure washing"}]'></textarea>
-      <div class="form-actions"><button class="primary-button" type="button" @click="importLeads">Import leads</button><button class="outline-button" type="button" @click="showImport = false">Cancel</button></div>
+    <div v-if="showImport" id="lead-import-panel" class="lead-import">
+      <div class="lead-import-heading">
+        <div><b>Import leads</b><span v-if="importFileName">{{ importFileName }}</span></div>
+        <button class="outline-button" type="button" @click="chooseImportFile">Choose JSON file</button>
+      </div>
+      <p>Choose a JSON file or paste a JSON array/object below. Existing records are deduplicated by <code>source + external_id</code>.</p>
+      <textarea v-model="importText" rows="10" placeholder='{"leads":[{"source":"yelp","external_id":"lead-id","name":"Ann M.","service":"Pressure washing"}]}'></textarea>
+      <div class="form-actions"><button class="primary-button" type="button" :disabled="!importText.trim()" @click="importLeads">Import these leads</button><button class="outline-button" type="button" @click="showImport = false">Cancel</button></div>
     </div>
 
     <p v-if="error" class="lead-message">{{ error }}</p>
@@ -193,10 +234,16 @@ onMounted(loadLeads)
 </template>
 
 <style scoped>
-.lead-desk { margin: 24px 0; padding: 22px; border: 1px solid rgba(210,162,84,.34); border-radius: 18px; background: #0d181a; color: #f3eee4; }
-.lead-heading, .lead-card-top, .lead-card-actions, .lead-actions, .form-actions { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+.lead-desk { margin: 24px 0; padding: 22px; border: 1px solid rgba(210,162,84,.34); border-radius: 18px; background: #0d181a; color: #f3eee4; scroll-margin-top: 18px; }
+.lead-heading, .lead-card-top, .lead-card-actions, .lead-actions, .form-actions, .lead-import-heading { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
 .lead-heading h2 { margin: 4px 0 6px; }
 .lead-heading p { margin: 0; color: #aab8b8; }
+.import-button { white-space: nowrap; }
+.import-callout { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin: 16px 0 4px; padding: 14px 16px; border: 1px solid rgba(237,197,123,.55); border-radius: 13px; background: #16282b; }
+.import-callout div { display: grid; gap: 3px; }
+.import-callout b { color: #edc57b; }
+.import-callout span { color: #b5c2c2; font-size: 13px; }
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 .lead-metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin: 18px 0; }
 .lead-metrics button { text-align: left; border: 1px solid #284144; border-radius: 12px; padding: 12px; background: #112225; color: inherit; }
 .lead-metrics span, .lead-meta b { display: block; color: #91a5a5; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
@@ -205,7 +252,9 @@ onMounted(loadLeads)
 .lead-form label { display: grid; gap: 6px; font-size: 12px; color: #b9c5c5; }
 .lead-form input, .lead-form textarea, .lead-import textarea, select { width: 100%; box-sizing: border-box; border: 1px solid #355155; border-radius: 9px; background: #0a1517; color: #f3eee4; padding: 10px; }
 .wide { grid-column: 1 / -1; }
-.lead-import { margin: 14px 0; padding: 16px; border-radius: 14px; background: #112225; }
+.lead-import { margin: 14px 0; padding: 16px; border: 2px solid rgba(237,197,123,.55); border-radius: 14px; background: #112225; }
+.lead-import-heading b { display: block; color: #edc57b; font-size: 18px; }
+.lead-import-heading span { display: block; margin-top: 3px; color: #9fb0b0; font-size: 12px; }
 .lead-import textarea { margin: 8px 0 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .lead-list { display: grid; gap: 12px; }
 .lead-card { border: 1px solid #294247; border-radius: 14px; padding: 15px; background: #101f22; }
@@ -222,8 +271,12 @@ onMounted(loadLeads)
 .lead-message { padding: 10px 12px; border-radius: 9px; background: #16282b; color: #edc57b; }
 .lead-empty { color: #91a5a5; }
 .primary-button, .outline-button { text-decoration: none; }
+.primary-button:disabled { opacity: .45; cursor: not-allowed; }
 @media (max-width: 720px) {
-  .lead-heading { align-items: flex-start; flex-direction: column; }
+  .lead-heading, .lead-import-heading { align-items: flex-start; flex-direction: column; }
+  .lead-actions { width: 100%; }
+  .lead-actions button { flex: 1; }
+  .import-callout { align-items: stretch; flex-direction: column; }
   .lead-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .lead-form { grid-template-columns: 1fr; }
   .wide { grid-column: auto; }
