@@ -1,4 +1,5 @@
 from communications_forwarder import build_tenant_payload
+from communications_templates import SMS_TEMPLATE_CATALOG_VERSION
 
 
 def test_appointment_maps_to_lodex_sales_conversation() -> None:
@@ -26,7 +27,7 @@ def test_appointment_maps_to_lodex_sales_conversation() -> None:
     assert payload["event"]["intent"] == "appointment_request"
     metadata = payload["event"]["metadata"]
     assert metadata["project_code"] == "LDX-ABC123"
-    assert metadata["sms_template_catalog_version"] == "lodex-a2p-service-2026-09-13-v1"
+    assert metadata["sms_template_catalog_version"] == SMS_TEMPLATE_CATALOG_VERSION
     assert metadata["suggested_sms_template_id"] == "service_photo_request"
     assert metadata["suggested_sms_draft"] == (
         "LODEX: Hi Sarah, thanks for contacting us about Door installation. "
@@ -50,7 +51,7 @@ def test_existing_uploads_do_not_generate_photo_request_draft() -> None:
     )
 
     metadata = payload["event"]["metadata"]
-    assert metadata["sms_template_catalog_version"] == "lodex-a2p-service-2026-09-13-v1"
+    assert metadata["sms_template_catalog_version"] == SMS_TEMPLATE_CATALOG_VERSION
     assert "suggested_sms_template_id" not in metadata
     assert "suggested_sms_draft" not in metadata
 
@@ -77,4 +78,4 @@ def test_support_maps_to_high_priority_support_conversation() -> None:
     assert payload["event"]["escalation_score"] == 85
     metadata = payload["event"]["metadata"]
     assert metadata["project_code"] == "LDX-ABC123"
-    assert metadata["sms_template_catalog_version"] == "lodex-a2p-service-2026-09-13-v1"
+    assert metadata["sms_template_catalog_version"] == SMS_TEMPLATE_CATALOG_VERSION
