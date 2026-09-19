@@ -10,6 +10,7 @@ import subprocess
 import time
 import uuid
 import base64
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -21,6 +22,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
+from communications_mcp import build_communications_mcp_app
 import distance
 from pricing import (
     calculate_visit_pricing,
@@ -53,11 +55,27 @@ PROJECT_EVENTS_FILE = UPLOAD_DIR.parent / "project-events.jsonl"
 LODEX_ADMIN_TOKEN = os.getenv("LODEX_ADMIN_TOKEN", "").strip()
 COMMUNICATIONS_HUB_URL = os.getenv("COMMUNICATIONS_HUB_URL", "http://communications-hub:8080").rstrip("/")
 COMMUNICATIONS_HUB_TOKEN = os.getenv("COMMUNICATIONS_HUB_TOKEN", "").strip()
+LODEX_PUBLIC_ORIGIN = os.getenv("LODEX_PUBLIC_ORIGIN", "https://lodex.work").rstrip("/")
+MCP_OAUTH_STATE_FILE = Path(
+    os.getenv("LODEX_MCP_OAUTH_STATE", str(UPLOAD_DIR.parent / "mcp-oauth-state.json"))
+)
 ADMIN_SESSION_COOKIE = "lodex_admin_session"
 ADMIN_SESSION_TTL_SECONDS = 8 * 60 * 60
 ACTIVE_VISITOR_SECONDS = 75
 
-app = FastAPI(title="LODEX Intake API", version="0.1.0")
+mcp_http_app = None
+
+
+@asynccontextmanager
+async def application_lifespan(_app: FastAPI):
+    if mcp_http_app is None:
+        yield
+        return
+    async with mcp_http_app.router.lifespan_context(mcp_http_app):
+        yield
+
+
+app = FastAPI(title="LODEX Intake API", version="0.1.0", lifespan=application_lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")],
@@ -1187,6 +1205,18 @@ async def admin_communications(
     limit: int = 200,
 ):
     """Read the canonical Communications Hub ledger through the LODEX admin session."""
+    result = await read_communications_ledger(view=view, contact=contact, project=project, limit=limit)
+    return JSONResponse(result, headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+
+
+async def read_communications_ledger(
+    *,
+    view: str = "all",
+    contact: str = "",
+    project: str = "",
+    limit: int = 200,
+) -> dict[str, Any]:
+    """Fetch a tenant-scoped ledger page without exposing the service credential."""
     if not COMMUNICATIONS_HUB_TOKEN:
         raise HTTPException(503, "Communications Hub access is not configured.")
     requested = view if view in {"all", "sms", "calls", "today", "attention"} else "all"
@@ -1206,6 +1236,28 @@ async def admin_communications(
         raise HTTPException(502, "Communications Hub is unavailable.") from exc
     if response.status_code == 401:
         raise HTTPException(502, "Communications Hub rejected the LODEX service credential.")
+    if response.status_code >= 400:
+        raise HTTPException(502, f"Communications Hub returned {response.status_code}.")
+    return response.json()
+
+
+async def read_communication_item(item_id: str) -> dict[str, Any]:
+    """Fetch one tenant-scoped ledger item for the MCP fetch tool."""
+    if not COMMUNICATIONS_HUB_TOKEN:
+        raise HTTPException(503, "Communications Hub access is not configured.")
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            response = await client.get(
+                f"{COMMUNICATIONS_HUB_URL}/api/tenant/ledger/item",
+                params={"id": item_id[:300]},
+                headers={"X-Communications-Token": COMMUNICATIONS_HUB_TOKEN},
+            )
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, "Communications Hub is unavailable.") from exc
+    if response.status_code == 401:
+        raise HTTPException(502, "Communications Hub rejected the LODEX service credential.")
+    if response.status_code == 404:
+        raise HTTPException(404, "Communication not found.")
     if response.status_code >= 400:
         raise HTTPException(502, f"Communications Hub returned {response.status_code}.")
     return response.json()
@@ -1574,3 +1626,31 @@ async def stripe_webhook(request: Request):
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
     return {"received": True, "handled": bool(status)}
+
+
+async def mcp_ledger_reader(**kwargs) -> dict[str, Any]:
+    return await read_communications_ledger(**kwargs)
+
+
+async def mcp_item_reader(item_id: str) -> dict[str, Any]:
+    return await read_communication_item(item_id)
+
+
+mcp_http_app, communications_mcp_provider, communications_mcp_server = build_communications_mcp_app(
+    origin=LODEX_PUBLIC_ORIGIN,
+    state_path=MCP_OAUTH_STATE_FILE,
+    ledger_reader=mcp_ledger_reader,
+    item_reader=mcp_item_reader,
+    admin_token=lambda: LODEX_ADMIN_TOKEN,
+    admin_session_valid=valid_admin_session,
+)
+app.mount("/", mcp_http_app, name="communications-mcp")
+
+
+def ensure_mcp_mount_last() -> None:
+    """Keep the catch-all MCP sub-application behind routes registered by runtime modules."""
+    for route in list(app.router.routes):
+        if getattr(route, "name", None) == "communications-mcp":
+            app.router.routes.remove(route)
+            app.router.routes.append(route)
+            return

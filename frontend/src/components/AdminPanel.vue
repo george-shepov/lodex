@@ -326,7 +326,7 @@ onBeforeUnmount(() => {
         </div>
         <p v-if="communicationsError" class="admin-error">{{ communicationsError }}</p>
         <div v-if="communications.items?.length" class="admin-communications-list">
-          <article v-for="item in communications.items" :key="item.id" :class="{ attention: item.failed }">
+          <article v-for="item in communications.items" :id="`communication-${item.id}`" :key="item.id" :class="{ attention: item.failed }">
             <div class="admin-communication-head"><b>{{ String(item.channel || '').toUpperCase() }} · {{ item.direction }}</b><time>{{ formatDate(item.timestamp) }}</time></div>
             <p>{{ item.preview || 'No transcript or message text available.' }}</p>
             <small>{{ item.contact_name || communicationEndpoint(item) }}<template v-if="item.project_id"> · {{ item.project_id }}</template><template v-if="item.provider_status"> · {{ item.provider_status }}</template><template v-if="item.processing_state && item.processing_state !== 'complete'"> · {{ item.processing_state }}</template></small>

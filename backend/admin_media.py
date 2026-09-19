@@ -63,3 +63,6 @@ async def admin_upload(upload_id: str):
             'X-Content-Type-Options': 'nosniff',
         },
     )
+
+
+main.ensure_mcp_mount_last()
