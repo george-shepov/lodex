@@ -85,7 +85,7 @@ async function loadCommunications() {
   if (communicationsContact.value.trim()) query.set('contact', communicationsContact.value.trim())
   if (communicationsProject.value.trim()) query.set('project', communicationsProject.value.trim())
   try {
-    communications.value = await api(\`/api/admin/communications?\${query}\`)
+    communications.value = await api(`/api/admin/communications?${query}`)
     communicationsError.value = ''
   } catch (loadError) {
     communicationsError.value = loadError.message
