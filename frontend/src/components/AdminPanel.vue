@@ -15,6 +15,11 @@ const alertsEnabled = ref(false)
 const selectedMedia = ref(null)
 const supportPanel = ref(null)
 const supportFlash = ref(false)
+const communications = ref({ views: ['all', 'sms', 'calls', 'today', 'attention'], items: [] })
+const communicationsView = ref('all')
+const communicationsContact = ref('')
+const communicationsProject = ref('')
+const communicationsError = ref('')
 let eventSocket = null
 let refreshTimer = null
 let socketPing = null
@@ -74,6 +79,28 @@ async function logout() {
   overview.value = { active_visitors: [], project_requests: [], support_requests: [], counts: {} }
 }
 
+async function loadCommunications() {
+  if (!authenticated.value) return
+  const query = new URLSearchParams({ view: communicationsView.value })
+  if (communicationsContact.value.trim()) query.set('contact', communicationsContact.value.trim())
+  if (communicationsProject.value.trim()) query.set('project', communicationsProject.value.trim())
+  try {
+    communications.value = await api(`/api/admin/communications?${query}`)
+    communicationsError.value = ''
+  } catch (loadError) {
+    communicationsError.value = loadError.message
+  }
+}
+
+async function setCommunicationsView(view) {
+  communicationsView.value = view
+  await loadCommunications()
+}
+
+function communicationEndpoint(item) {
+  return item.endpoint || (item.direction === 'inbound' ? item.sender : (item.recipients || []).join(', ')) || 'Unknown endpoint'
+}
+
 async function loadOverview() {
   if (!authenticated.value) return
   try {
@@ -115,10 +142,10 @@ function disconnectEvents() {
 }
 
 async function startDashboard() {
-  await loadOverview()
+  await Promise.all([loadOverview(), loadCommunications()])
   connectEvents()
   window.clearInterval(refreshTimer)
-  refreshTimer = window.setInterval(loadOverview, 15000)
+  refreshTimer = window.setInterval(() => { loadOverview(); loadCommunications() }, 15000)
 }
 
 async function enableAlerts() {
@@ -288,6 +315,24 @@ onBeforeUnmount(() => {
         <div class="admin-panel-heading"><div><p class="eyebrow">Video support</p><h2>Call requests</h2></div><span v-if="supportRequests.some(item => item.status === 'waiting')" class="support-live-badge">LIVE</span></div>
         <div v-if="supportRequests.length" class="admin-support-grid"><article v-for="request in supportRequests" :key="request.id"><span>{{ request.status }}</span><h3>{{ request.name || 'Site visitor' }}</h3><p>{{ request.message || 'Requested a live video visit.' }}</p><small>{{ request.phone || 'No phone provided' }} · {{ formatDate(request.created_at) }}</small><button class="primary-button" type="button" @click="joinRoom(request.room_code)">Join {{ request.room_code }} <b>↗</b></button></article></div>
         <p v-else class="admin-empty">No live support requests yet.</p>
+      </section>
+
+      <section class="admin-panel admin-communications-panel">
+        <div class="admin-panel-heading"><div><p class="eyebrow">Unified inbox</p><h2>Communications log</h2></div><button class="outline-button" type="button" @click="loadCommunications">Refresh</button></div>
+        <p class="admin-communications-note">Canonical Communications Hub ledger — SMS/MMS, calls, transcripts, summaries, delivery state, customer and project context.</p>
+        <div class="admin-communications-toolbar">
+          <div class="admin-communications-views"><button v-for="view in communications.views" :key="view" type="button" :class="{ active: communicationsView === view }" @click="setCommunicationsView(view)">{{ view === 'sms' ? 'SMS/MMS' : view }}</button></div>
+          <form class="admin-communications-filters" @submit.prevent="loadCommunications"><input v-model="communicationsContact" placeholder="Customer / phone" /><input v-model="communicationsProject" placeholder="Project" /><button class="outline-button" type="submit">Filter</button></form>
+        </div>
+        <p v-if="communicationsError" class="admin-error">{{ communicationsError }}</p>
+        <div v-if="communications.items?.length" class="admin-communications-list">
+          <article v-for="item in communications.items" :id="`communication-${item.id}`" :key="item.id" :class="{ attention: item.failed }">
+            <div class="admin-communication-head"><b>{{ String(item.channel || '').toUpperCase() }} · {{ item.direction }}</b><time>{{ formatDate(item.timestamp) }}</time></div>
+            <p>{{ item.preview || 'No transcript or message text available.' }}</p>
+            <small>{{ item.contact_name || communicationEndpoint(item) }}<template v-if="item.project_id"> · {{ item.project_id }}</template><template v-if="item.provider_status"> · {{ item.provider_status }}</template><template v-if="item.processing_state && item.processing_state !== 'complete'"> · {{ item.processing_state }}</template></small>
+          </article>
+        </div>
+        <p v-else-if="!communicationsError" class="admin-empty">No matching communications.</p>
       </section>
 
       <AdminConceptCatalog />

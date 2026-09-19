@@ -177,6 +177,29 @@ jobs:
           grep -Fq '<loc>https://lodex.work/services/handyman-maintenance</loc>' /tmp/lodex-sitemap
 
           curl --fail --silent --show-error --max-time 20 \
+            -o /tmp/lodex-mcp-metadata \
+            https://lodex.work/.well-known/oauth-protected-resource/mcp
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          metadata = json.loads(Path('/tmp/lodex-mcp-metadata').read_text())
+          assert metadata['resource'] == 'https://lodex.work/mcp'
+          assert metadata['authorization_servers'] == ['https://lodex.work/']
+          assert metadata['scopes_supported'] == ['communications:read']
+          PY
+
+          mcp_status="$(curl --silent --show-error --max-time 20 \
+            -D /tmp/lodex-mcp-headers \
+            -o /tmp/lodex-mcp-body \
+            -w '%{http_code}' \
+            -H 'Accept: application/json, text/event-stream' \
+            -H 'Content-Type: application/json' \
+            --data '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+            https://lodex.work/mcp)"
+          test "$mcp_status" = 401
+          grep -Eqi '^www-authenticate:.*oauth-protected-resource/mcp' /tmp/lodex-mcp-headers
+
+          curl --fail --silent --show-error --max-time 20 \
             -o /tmp/lodex-service \
             https://lodex.work/services/handyman-maintenance
           grep -Fq '<h1>Handyman &amp; Property Maintenance</h1>' /tmp/lodex-service
@@ -198,4 +221,4 @@ jobs:
           test "$not_found_status" = 404
           grep -Fq '<h1>Page not found</h1>' /tmp/lodex-not-found
 
-          echo 'LODEX deployment verified: public HTML, Twilio primary number, voice fallback, crawler files, canonical service route, and real 404.'
+          echo 'LODEX deployment verified: public HTML, communications MCP auth boundary, crawler files, canonical service route, and real 404.'
