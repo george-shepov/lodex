@@ -109,3 +109,46 @@ def test_presence_is_anonymous_and_support_room_is_visible_to_admin(admin_app):
         assert "user_agent" not in record
 
     run(scenario())
+
+
+def test_admin_communications_proxies_canonical_hub_ledger(admin_app, monkeypatch):
+    class HubResponse:
+        status_code = 200
+        def json(self):
+            return {"views": ["all", "sms", "calls", "today", "attention"], "items": [{"id": "call-1", "channel": "voice", "direction": "inbound", "preview": "Need a door repaired"}]}
+
+    class HubClient:
+        def __init__(self, *args, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def get(self, url, *, params, headers):
+            assert url == "http://communications-hub:8080/api/tenant/ledger"
+            assert params["view"] == "calls"
+            assert headers["X-Communications-Token"] == "tenant-token"
+            return HubResponse()
+
+    monkeypatch.setattr(main, "COMMUNICATIONS_HUB_URL", "http://communications-hub:8080")
+    monkeypatch.setattr(main, "COMMUNICATIONS_HUB_TOKEN", "tenant-token")
+    monkeypatch.setattr(main.httpx, "AsyncClient", HubClient)
+
+    async def scenario():
+        transport = httpx.ASGITransport(app=main.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            assert (await client.get("/api/admin/communications")).status_code == 401
+            assert (await client.post("/api/admin/login", json={"token": "owner-token-for-tests"})).status_code == 200
+            response = await client.get("/api/admin/communications?view=calls")
+            assert response.status_code == 200
+            assert response.json()["items"][0]["channel"] == "voice"
+
+    # Preserve the real httpx client used by the in-process test harness.
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(main.httpx, "AsyncClient", HubClient)
+    async def guarded_scenario():
+        transport = httpx.ASGITransport(app=main.app)
+        async with real_client(transport=transport, base_url="http://testserver") as client:
+            assert (await client.get("/api/admin/communications")).status_code == 401
+            assert (await client.post("/api/admin/login", json={"token": "owner-token-for-tests"})).status_code == 200
+            response = await client.get("/api/admin/communications?view=calls")
+            assert response.status_code == 200
+            assert response.json()["items"][0]["channel"] == "voice"
+    run(guarded_scenario())
