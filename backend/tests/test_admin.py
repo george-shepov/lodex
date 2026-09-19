@@ -111,6 +111,7 @@ def test_presence_is_anonymous_and_support_room_is_visible_to_admin(admin_app):
     run(scenario())
 
 
+
 def test_admin_communications_proxies_canonical_hub_ledger(admin_app, monkeypatch):
     class HubResponse:
         status_code = 200
@@ -129,21 +130,10 @@ def test_admin_communications_proxies_canonical_hub_ledger(admin_app, monkeypatc
 
     monkeypatch.setattr(main, "COMMUNICATIONS_HUB_URL", "http://communications-hub:8080")
     monkeypatch.setattr(main, "COMMUNICATIONS_HUB_TOKEN", "tenant-token")
+    real_client = httpx.AsyncClient
     monkeypatch.setattr(main.httpx, "AsyncClient", HubClient)
 
     async def scenario():
-        transport = httpx.ASGITransport(app=main.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            assert (await client.get("/api/admin/communications")).status_code == 401
-            assert (await client.post("/api/admin/login", json={"token": "owner-token-for-tests"})).status_code == 200
-            response = await client.get("/api/admin/communications?view=calls")
-            assert response.status_code == 200
-            assert response.json()["items"][0]["channel"] == "voice"
-
-    # Preserve the real httpx client used by the in-process test harness.
-    real_client = httpx.AsyncClient
-    monkeypatch.setattr(main.httpx, "AsyncClient", HubClient)
-    async def guarded_scenario():
         transport = httpx.ASGITransport(app=main.app)
         async with real_client(transport=transport, base_url="http://testserver") as client:
             assert (await client.get("/api/admin/communications")).status_code == 401
@@ -151,4 +141,5 @@ def test_admin_communications_proxies_canonical_hub_ledger(admin_app, monkeypatc
             response = await client.get("/api/admin/communications?view=calls")
             assert response.status_code == 200
             assert response.json()["items"][0]["channel"] == "voice"
-    run(guarded_scenario())
+
+    run(scenario())
