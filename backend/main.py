@@ -51,6 +51,8 @@ SUPPORT_REQUESTS_FILE = UPLOAD_DIR.parent / "support-requests.jsonl"
 VISITOR_EVENTS_FILE = UPLOAD_DIR.parent / "visitor-events.jsonl"
 PROJECT_EVENTS_FILE = UPLOAD_DIR.parent / "project-events.jsonl"
 LODEX_ADMIN_TOKEN = os.getenv("LODEX_ADMIN_TOKEN", "").strip()
+COMMUNICATIONS_HUB_URL = os.getenv("COMMUNICATIONS_HUB_URL", "http://communications-hub:8080").rstrip("/")
+COMMUNICATIONS_HUB_TOKEN = os.getenv("COMMUNICATIONS_HUB_TOKEN", "").strip()
 ADMIN_SESSION_COOKIE = "lodex_admin_session"
 ADMIN_SESSION_TTL_SECONDS = 8 * 60 * 60
 ACTIVE_VISITOR_SECONDS = 75
@@ -1175,6 +1177,38 @@ async def admin_overview():
             "paid": sum(item.get("payment_status") == "paid" for item in requests),
         },
     }
+
+
+@app.get("/api/admin/communications", dependencies=[Depends(require_admin)])
+async def admin_communications(
+    view: str = "all",
+    contact: str = "",
+    project: str = "",
+    limit: int = 200,
+):
+    """Read the canonical Communications Hub ledger through the LODEX admin session."""
+    if not COMMUNICATIONS_HUB_TOKEN:
+        raise HTTPException(503, "Communications Hub access is not configured.")
+    requested = view if view in {"all", "sms", "calls", "today", "attention"} else "all"
+    params = {"view": requested, "limit": max(1, min(limit, 300))}
+    if contact.strip():
+        params["contact"] = contact.strip()[:100]
+    if project.strip():
+        params["project"] = project.strip()[:120]
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            response = await client.get(
+                f"{COMMUNICATIONS_HUB_URL}/api/tenant/ledger",
+                params=params,
+                headers={"X-Communications-Token": COMMUNICATIONS_HUB_TOKEN},
+            )
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, "Communications Hub is unavailable.") from exc
+    if response.status_code == 401:
+        raise HTTPException(502, "Communications Hub rejected the LODEX service credential.")
+    if response.status_code >= 400:
+        raise HTTPException(502, f"Communications Hub returned {response.status_code}.")
+    return response.json()
 
 
 @app.patch("/api/admin/projects/{project_code}", dependencies=[Depends(require_admin)])
